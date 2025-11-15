@@ -1,0 +1,62 @@
+# OS & Editor Files（系统、编辑器）
+.DS_Store
+.idea/
+.project
+.pydevproject
+.vscode/
+
+
+# Python cache / bytecode（缓存文件）
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+
+# Build artifacts（构建产物）
+build/
+dist/
+cytest.egg-info/
+*.egg
+*.egg-info
+
+
+# Logs（日志）
+*.log
+log/
+logs/
+
+
+# Backup / temp files（临时文件）
+*.bak
+*.tmp
+*.swp
+
+
+# Node toolchain (if ever used)
+node_modules/
+
+
+# Python virtual environments
+venv/
+.env/
+.venv/
+
+
+# Coverage / testing output
+.coverage
+coverage.xml
+htmlcov/
+
+
+# IDE garbage
+workspace.xml
+
+
+# Ignore reference project（你不想让它进 git）
+# hytest-main/
+
+
+# Custom dist / temp folder（可以用来跑脚本时输出）
+z_dist/
+migrations/

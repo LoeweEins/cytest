@@ -1,0 +1,56 @@
+# ---------------------------------------
+# pyproject.toml 是 Python 官方推荐的统一项目配置文件，
+# 是未来完全替代 setup.py、setup.cfg 的标准
+# ---------------------------------------
+
+# project url 部分要注意看看！
+
+# 「声明如何构建这个框架，用setuptools发布」
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+# 定义项目元数据 名字 版本 作者信息
+[project]
+name = "cytest"
+version = "0.0.1"
+authors = [
+  {name = "Phoenix Chak Yan", email = "zeen_long@outlook.com"},
+]
+description = "A comprehensive framework for QA testing combining two popular frameworks"
+
+
+
+readme = "README.md" # 项目在 PyPI 上的介绍内容来自 README.md
+license = "Apache-2.0" # 选择开源协议
+license-files = ["LICENSE.txt"]
+requires-python = ">=3.9"
+keywords = ["cytest", "automation", "testautomation"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Testing",
+]
+
+# 指定依赖库，rich 输出报告，html 用 dominate
+dependencies = [
+    "rich",
+    "dominate",
+    "executing",
+]
+
+[project.urls]
+Homepage = "https://github.com/LoeweEins/cytest" # 还不确定
+Download = "https://pypi.python.org/pypi/cytest" # 还不确定
+
+# 命令行运行简化，直接敲 cytest
+[project.scripts]
+cytest = "cytest.run:run" # pip 安装后可用，run.bat 用于本地开发，不通过 __main__.py 函数
+
+# 指定打包范围为 cytest 目录
+[tool.setuptools.packages.find]
+include = ["cytest*"]
+
+# 通配打包所有非 python 文件的静态资源
+[tool.setuptools.package-data]
+"*" = ["*.*"]
