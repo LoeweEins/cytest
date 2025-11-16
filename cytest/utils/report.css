@@ -1,62 +1,76 @@
 /* Report CSS 样式表 */
+/*根据标签名或者属性选择器设置样式*/
+/*红色表示选中 html 标签*/
+
+
+/* 页面整体布局 */
 body {    
+    /*字体优先列表*/
     font-family: 'JetBrains Mono', "Roboto Mono", Consolas, "Ubuntu Mono", "DejaVu Sans Mono", Menlo, '微软雅黑', monospace;
-    font-size: .9rem;
-    color: #696e71;
-    display: grid;
-    grid-template-columns: 1fr 5rem;
+    font-size: .9rem; /*字体大小*/
+    color: #696e71; /*字体颜色*/
+    display: grid; /*使用网格布局*/
+    grid-template-columns: 1fr 5rem; /*定义两列，左边放主内容，第二列放浮动菜单*/
 }
 
+/* 主内容容器 */
 .main_section {   
     width: 90%;
     margin: 0 auto;
 }
 
+/* 右上角浮动菜单 */
 #float_menu{    
-    position:fixed;
-    top:0;
-    right:0;
-    text-align: center;
+    position:fixed; /*固定定位，始终显示在视口内*/
+    top:0; /*距离视口顶部0*/
+    right:0; /*距离视口右侧0*/
+    text-align: center; /*文本居中*/
 }
 
+/* 浮动子元素 */
 #float_menu .menu-item {       
-    cursor: pointer;
-    padding: .5em;
-    margin: .5em 0;
+    cursor: pointer; /*鼠标变成小手*/
+    padding: .5em; /*内边距*/
+    margin: .5em 0; /*上下外边距*/
     color: #c08580;
     background-color: #f8f0ef;
-    font-size: 1.2em;
+    font-size: 1.2em; /*字体大小*/
 }
 
 
-
+/* 统计区 */
 .result{  
-    display: flex;
+    display: flex; /*使用弹性布局*/
 }
   
-  
+/* 统计表格 */
 .result_table{
-    border-collapse: collapse;
+    border-collapse: collapse; /*合并边框*/
     border: 1px solid #f0e0e5;
     width: 30em;
     text-align: center;
     font-size: 1.0em;
 }
       
+/* 统计表格单元格 */
+/* td表示表格单元格 */
 .result_table td{
     border: 1px solid #f0e0e5;
     padding: .3em;
 }
   
+/* 统计柱状图 */
 .result_barchart{  
     width: 30em;
     margin: 0 5em 0 5em;
 }
   
+/* 柱状图单项 */
 .barchar_item{
     margin: 2.5rem 0;
 }
   
+/* 柱状图外框 */
 .barchart_barbox {
     margin: 0.5em 0;
     width: 100%;
@@ -65,6 +79,7 @@ body {
     border-radius: .2em;
 }
   
+/* 柱状图柱子 */
 .barchart_bar {
     text-align: right;
     height: 1.2rem;
@@ -73,30 +88,34 @@ body {
   
 
 
-
+/* 三级标题按钮 */
 .h3_button {
     margin: 1.5em;
-    cursor: pointer;
+    cursor: pointer; /*鼠标变成小手*/
     color: #03a9f4;
 }
 
 
+/* 信息显示区域 */
 .info
 {
     white-space:pre-wrap;
     margin: .8em 2.8em;
 }
 
-
+/* error 信息 */
 .error-info
 {
     color: #a32626
 }
 
+/* 中断 信息 */
 .abort-info{
     color: #9c27b0;
 }
 
+
+/* 测试套件整体框 */
 .suite_dir {
     margin: 1em .2em;
     padding: .3em;
@@ -109,7 +128,7 @@ body {
     border: 1px solid #bcd8e4;
 }
 
-
+/* 测试用例整体框 */
 .case {
     margin: 1em .2em;
     /* padding: .3em; */
@@ -120,6 +139,7 @@ body {
     margin: 0em 1em; 
 }
 
+/* 进入/离开 测试套件 行 */
 .enter_suite, .leave_suite {    
     display: grid;
     grid-template-columns: 1fr 4fr 2fr 1fr;
@@ -127,7 +147,7 @@ body {
     align-items : center;
 }
 
-
+/* 文件夹标题行 */
 .folder_header { 
     padding: .2em .7em;
     background-color: #fffaf9;
@@ -139,11 +159,13 @@ body {
     align-items : center;
 }
 
+/* 文件夹标题 */
 .folder_header > *{ 
    text-align: left;
 }
 
 
+/* setup/teardown/test_steps 内容块 */
 .setup{
     margin: .2em;
     /* padding: .3em; */
@@ -160,7 +182,7 @@ body {
     /* border: 1px solid #e7d4d4; */
 }
 
-
+/* 小徽标样式 */
 .label {
     display: inline-block;
     padding: .1em .5em;
@@ -182,7 +204,7 @@ body {
 } */
 
 
-
+/* 用例状态 */
 .case_setup, .case_teardown, .case_default_setup, .case_default_teardown{
     background: aliceblue;
     padding: .3rem .2rem;
@@ -208,7 +230,7 @@ body {
 }
 
 
-
+/*  步骤/检查点/tag样式 */
 .case_step  {
     margin: .8em;
 }
@@ -219,7 +241,7 @@ body {
     margin: .8em 2em;
 }
 
-.case_step  .tag{
+.case_step .tag{
     color: #2196f3;;
     margin: .3em 1em .3em 0;
     padding: .1em .3em;
@@ -239,25 +261,28 @@ body {
     font-size: .92em;
 }
 
+
+/* 截图 */
 .screenshot {
     border: 1px solid #86c2dd;
 }
-
+/* 执行时间 */
 .executetime {
     text-align: right;
 }
-
+/* 段落 */
 .paragraph {
     white-space: pre-wrap;
 }
-
+/* 持续时间 */
 span.duration {
     padding: .2rem;
     font-size: .7rem;
     text-align: right;
 }
 
-.flow-space-between{
+/* 使元素水平排列且两端对齐 */
+.flow-space-between{ /* 容器元素 */
     display: flex;
-    justify-content: space-between;
+    justify-content: space-between; /* 两端对齐 */
 }
