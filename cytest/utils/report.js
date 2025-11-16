@@ -87,3 +87,6 @@ function next_error(){
 *	HTML 上 onclick=xxx
 *	或 JS 中 addEventListener('click', xxx)
 */
+
+// .folder_header 的元素是动态生成的，必须等页面加载完后再绑定点击事件
+// 而next_error、previous_error，直接通过onclick绑定在按钮上即可
