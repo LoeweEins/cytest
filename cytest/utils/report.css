@@ -1,0 +1,263 @@
+/* Report CSS 样式表 */
+body {    
+    font-family: 'JetBrains Mono', "Roboto Mono", Consolas, "Ubuntu Mono", "DejaVu Sans Mono", Menlo, '微软雅黑', monospace;
+    font-size: .9rem;
+    color: #696e71;
+    display: grid;
+    grid-template-columns: 1fr 5rem;
+}
+
+.main_section {   
+    width: 90%;
+    margin: 0 auto;
+}
+
+#float_menu{    
+    position:fixed;
+    top:0;
+    right:0;
+    text-align: center;
+}
+
+#float_menu .menu-item {       
+    cursor: pointer;
+    padding: .5em;
+    margin: .5em 0;
+    color: #c08580;
+    background-color: #f8f0ef;
+    font-size: 1.2em;
+}
+
+
+
+.result{  
+    display: flex;
+}
+  
+  
+.result_table{
+    border-collapse: collapse;
+    border: 1px solid #f0e0e5;
+    width: 30em;
+    text-align: center;
+    font-size: 1.0em;
+}
+      
+.result_table td{
+    border: 1px solid #f0e0e5;
+    padding: .3em;
+}
+  
+.result_barchart{  
+    width: 30em;
+    margin: 0 5em 0 5em;
+}
+  
+.barchar_item{
+    margin: 2.5rem 0;
+}
+  
+.barchart_barbox {
+    margin: 0.5em 0;
+    width: 100%;
+    background-color: #fff;
+    border: 1px solid #86c2dd;
+    border-radius: .2em;
+}
+  
+.barchart_bar {
+    text-align: right;
+    height: 1.2rem;
+}
+  
+  
+
+
+
+.h3_button {
+    margin: 1.5em;
+    cursor: pointer;
+    color: #03a9f4;
+}
+
+
+.info
+{
+    white-space:pre-wrap;
+    margin: .8em 2.8em;
+}
+
+
+.error-info
+{
+    color: #a32626
+}
+
+.abort-info{
+    color: #9c27b0;
+}
+
+.suite_dir {
+    margin: 1em .2em;
+    padding: .3em;
+    /* background-color: #dfeff6; */
+    border: 1px solid #bcd8e4;
+}
+.suite_file {
+    margin: 1em .2em;
+    padding: .3em;
+    border: 1px solid #bcd8e4;
+}
+
+
+.case {
+    margin: 1em .2em;
+    /* padding: .3em; */
+    border: 1px solid #e7d4d4;
+}
+
+.case_class_path{
+    margin: 0em 1em; 
+}
+
+.enter_suite, .leave_suite {    
+    display: grid;
+    grid-template-columns: 1fr 4fr 2fr 1fr;
+    gap: 2rem;    
+    align-items : center;
+}
+
+
+.folder_header { 
+    padding: .2em .7em;
+    background-color: #fffaf9;
+    cursor: pointer;    
+
+    display: grid;
+    grid-template-columns: 1fr 4fr 2fr 1fr;
+    gap: 1rem;    
+    align-items : center;
+}
+
+.folder_header > *{ 
+   text-align: left;
+}
+
+
+.setup{
+    margin: .2em;
+    /* padding: .3em; */
+    /* border: 1px solid #e7d4d4; */
+}
+.teardown{
+    margin: .2em;
+    /* padding: .3em;*/
+    /* border: 1px solid #e7d4d4; */
+}
+.test_steps{
+    margin: .2em;
+    padding: .3em;
+    /* border: 1px solid #e7d4d4; */
+}
+
+
+.label {
+    display: inline-block;
+    padding: .1em .5em;
+    font-size: .88em;
+    letter-spacing: 1px;
+    white-space: nowrap;
+    color: #0d6ebc;
+    border-radius: .2em;
+    min-width: 5em;    
+    margin-right: 2em;
+    font-family: consolas;
+}
+
+/* .suite_setup .label{
+    color: #219e26 ;
+}
+.suite_teardown .label{
+    color: #219e26;
+} */
+
+
+
+.case_setup, .case_teardown, .case_default_setup, .case_default_teardown{
+    background: aliceblue;
+    padding: .3rem .2rem;
+}
+
+/* .case.pass   .casename{
+    color: #329132 ;
+} */
+.case.pass   .caselabel{
+    color: #0d8f0b;
+}
+/* .case.fail   .casename{
+    color: #a32626;
+} */
+.case.fail   .caselabel{
+    color: #a32626;
+}
+/* .case.abort   .casename{
+    color: #953ab7;
+} */
+.case.abort   .caselabel{
+    color: #9c27b0;
+}
+
+
+
+.case_step  {
+    margin: .8em;
+}
+.checkpoint_pass {
+    margin: .8em 2em;
+}
+.checkpoint_fail {
+    margin: .8em 2em;
+}
+
+.case_step  .tag{
+    color: #2196f3;;
+    margin: .3em 1em .3em 0;
+    padding: .1em .3em;
+    font-size: .92em;
+}
+
+.checkpoint_pass .tag{
+    color: #009806;
+    margin:.3em 1em .3em .5em;
+    padding: .1em .3em;
+    font-size: .92em;
+}
+.checkpoint_fail .tag{
+    color: #9c2020;
+    margin:.3em 1em .3em .5em;
+    padding: .1em .3em;
+    font-size: .92em;
+}
+
+.screenshot {
+    border: 1px solid #86c2dd;
+}
+
+.executetime {
+    text-align: right;
+}
+
+.paragraph {
+    white-space: pre-wrap;
+}
+
+span.duration {
+    padding: .2rem;
+    font-size: .7rem;
+    text-align: right;
+}
+
+.flow-space-between{
+    display: flex;
+    justify-content: space-between;
+}
