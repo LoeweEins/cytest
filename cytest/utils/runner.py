@@ -112,6 +112,11 @@ class Collector:
     current_case_tags = []
 
 
+
+    # 用os.walk递归遍历casedir下所有.py文件
+    # 动态import每个.py文件为模块
+    # 对每个模块调用 handleOneModule 进行处理
+    # 删除无用的套件
     @classmethod
     def run(cls,
             casedir='cases',
@@ -190,7 +195,12 @@ class Collector:
                 cls.exec_table.pop(stPath)
 
 
-    # 处理一个模块文件
+    # 一个模块如何被拆解成 meta 信息
+    # 判断文件是 __st__ 还是 用例模块
+    # 遍历模块内所有属性和对象，找出标签列表、初始化清除函数、用例类
+    # 维护标签表 suite_tag_table
+    # 用例过滤的流程：调用 caseFilter 方法，统计case_number
+    # st文件： 只处理 标签、初始化清除
     @classmethod
     def handleOneModule(cls,module,filepath:str,
                         tag_include_expr:str,
@@ -198,29 +208,32 @@ class Collector:
                         suitename_filters:list,
                         casename_filters:list):
 
+        # 去掉 .py 后缀
         cur_module_name = os.path.basename(filepath).replace('.py','')
 
+        # 确认当前模块是 __st__ 还是 用例模块
         stType = filepath.endswith('__st__.py')
         caseType = not stType
 
         if stType:
             filepath = filepath.replace('__st__.py','')
 
-        # ======  搜寻该模块  hytest关键信息 ，保存在 meta 里面========
+        # ======  搜寻该模块  cytest关键信息 ，保存在 meta 里面========
+
+        # 初始化 meta 字典
         meta = { 'type': 'casefile' if caseType else 'st' }
+        # 如果该模块是用例模块，额外初始化 cases 列表存入 meta
         if caseType: 
             meta['cases'] = []
 
+        # 遍历模块内 所有属性和对象（属性所指的对象）
         for name,item in module.__dict__.items():
-
             # __ 开头的名字肯定不是hytest关键名，跳过
             if name.startswith('__'):
                 continue
-
             # 对应一个模块文件的，肯定是外部导入的模块，跳过
             if hasattr(item,'__file__'):
                 continue
-
             # 外部模块内部导入的名字，跳过
             if hasattr(item,'__module__'):
                 if item.__module__ != cur_module_name:
@@ -228,7 +241,7 @@ class Collector:
 
             # signal.info(f'-- {name}')
 
-            # 列表 ： 是 标签 吗？
+            # 列表 ： 是 标签 吗？（也可以是 __st__ 内的标签）
             if isinstance(item, list):
                 # 非标签关键字，跳过
                 if name not in cls.SUITE_TAGS:
@@ -237,8 +250,9 @@ class Collector:
                 # 如果标签列表为空，跳过
                 if not item:
                     continue
-
+                # 记录到 标签表 中
                 meta[name] = item
+                # 记录到 路径标签表 
                 cls.suite_tag_table[name][filepath] = item
 
                 signal.debug(f'-- {name}')
@@ -260,18 +274,19 @@ class Collector:
                     signal.info(f'no teststeps in class "{name}", skip it.')
                     continue 
                 
-                # 如果 有 name    是 一个用例
+                # 如果 有 name  是 一个用例
                 if  hasattr(item, 'name'):
                     # 同时有 ddt_cases ，格式不对
                     if hasattr(item, 'ddt_cases') : 
                         signal.info(f'both "name" and "ddt_cases" in class "{name}", skip it.')
                         continue 
-
-                    meta['cases'].append(item())
+                    
+                    # 实例化用例类，加入用例列表
+                    meta['cases'].append(item()) # !!! 因为每个用例是一个类，要实例化
 
                     signal.debug(f'-- {name}')
 
-                # 如果 有 ddt_cases  是数据驱动用例，对应多个用例
+                # 没有 name，有 ddt_cases，实例化每一个用例
                 elif hasattr(item, 'ddt_cases') :  
                     for caseData in item.ddt_cases:
                         # 实例化每个用例，属性name，para设置好
@@ -289,15 +304,17 @@ class Collector:
 
         # suite_tag_table 表中去掉 和 当前模块不相干的记录， 
         # 这样每次进入新的模块目录，就会自动去掉前面已经处理过的路径 标签记录
+        # 设置当前 suite 的标签
+        # 这里是一个小 trick
         new_suite_tag_table = {}
         for tname, table in cls.suite_tag_table.items(): 
             new_suite_tag_table[tname] = {p:v for p,v in table.items() if filepath.startswith(p)}                 
         cls.suite_tag_table = new_suite_tag_table
         
         
-        #  用例模块 
+        #  用例过滤
         if caseType:            
-            # 如果 没有用例 
+            # 如果 没有用例 skip 掉
             if not meta['cases']:
                 signal.info(f'\n** no cases in this file, skip it.')
                 return
@@ -316,7 +333,7 @@ class Collector:
         # __st__ 模块
         else:   
             #  应该包含 初始化 或者 清除 或者 标签 ，否则是无效模块，跳过
-            if len(meta) == 1:
+            if len(meta) == 1: # 只有一个初始的 'type' : 'st'
                 signal.info(f'\n** no setup/teardown/tags in this file , skip it.')
                 return 
             
@@ -325,6 +342,9 @@ class Collector:
         cls.exec_table[filepath] = meta
 
     # 经过这个函数的执行， 最后 meta['cases'] 里面依然保存的，才是需要执行的用例
+    # 先看tag_exclude_expr，满足则排除
+    # 再看 casename_filters，满足则加入
+    # 再看 tag_include_expr，满足则加入
     @classmethod
     def caseFilter (cls,filepath:str, meta:dict,
                         tag_include_expr:str,
@@ -342,12 +362,15 @@ class Collector:
         # 并且 有 套件名过滤，并且整个套件被选中，就不需要再看每个用例的情况了
         # 一个用例文件 ，路径上的每一级都是一个套件
         if not tag_exclude_expr and suitename_filters:
-            suitenames = filepath.split(os.path.sep) 
+            suitenames = filepath.split(os.path.sep) # os.path.sep 跨平台的路径分隔符
             # 套件文件名的后缀.py 去掉 作为套件名
             suitenames = [sn[:-3] if sn.endswith('.py') else sn  for sn in suitenames ]
             if cls._patternMatch(suitenames,suitename_filters):
                 return
-        
+        # cases/order/test_login.py
+        # .split(os.path.sep) 拆成：['cases', 'order', 'test_login.py']
+
+
         # -------- 对每个用例进行分析 ---------
 
         passedCases = [] # 被选中的用例列表
@@ -356,7 +379,7 @@ class Collector:
             signal.debug(f'\n* {caseClass.name}')
             
             # ----------- 先看标签排除过滤 ------------
-            
+            # 这里有点没看懂!!!有点像小 trick，再问问看
             # 得到当前模块相关的 套件 标签，就是表中现有的标签合并
             suite_tags = [t for tl in cls.suite_tag_table['force_tags'].values() for t in tl]
             # 用例本身的标签
@@ -365,9 +388,13 @@ class Collector:
             cls.current_case_tags = set(suite_tags + case_tags)
             # print(cls.current_case_tags)
 
+
+
             # 如果有标签排除过滤
             if tag_exclude_expr:   
                 # 条件满足，被排除
+                # eval()表示执行字符串表达式
+                
                 if eval(tag_exclude_expr) == True: 
                     signal.debug(f'excluded for meeting expr : {tag_exclude_expr}')
                     continue 
@@ -379,8 +406,8 @@ class Collector:
                         continue
 
 
-            # --------- 再看 名字匹配过滤 ------------ 
-            # 有用例名过滤
+            # --------- 再看 名字匹配加入 ------------ 
+            # 有用例名加入
             if casename_filters:
                 caseName = getattr(caseClass, 'name')
                 #  通过用例名过滤 
@@ -389,7 +416,7 @@ class Collector:
                     continue
 
 
-            # ----------- 再看标签匹配过滤 ------------
+            # ----------- 再看标签匹配加入 ------------
             if tag_include_expr :                
                 if eval(tag_include_expr) == True:                    
                     passedCases.append(caseClass)
@@ -402,6 +429,7 @@ class Collector:
         meta['cases'] = passedCases
 
 
+    # 用例名/套件名匹配
     @classmethod
     def _patternMatch (cls,names,patterns):
         for name in names:
