@@ -358,7 +358,7 @@ class Collector:
         if not tag_include_expr and not tag_exclude_expr and not suitename_filters and not casename_filters:
             return 
         
-        # 如果没有排除过滤， 
+        # 如果没有排除过滤
         # 并且 有 套件名过滤，并且整个套件被选中，就不需要再看每个用例的情况了
         # 一个用例文件 ，路径上的每一级都是一个套件
         if not tag_exclude_expr and suitename_filters:
@@ -437,3 +437,393 @@ class Collector:
                 if fnmatch.fnmatch(name,pattern):
                     return True
         return False
+    
+
+    '''
+执行自动化的 思路 伪代码如下：
+
+Runner负责：
+按什么顺序跑？什么时候跑哪个 suite_setup / suite_teardown？
+某个套件初始化失败后，下游都不要跑了。
+每个 case 的 setup / steps / teardown 怎么调？
+异常怎么处理？日志和报告怎么通知？
+
+1. 先保证 exec_list 中 该teardown的地方插入 teardown记录
+
+
+执行前， exec_list 示例如下 目录
+[
+    'cases\\',
+    'cases\\.功能3.py',
+    'cases\\功能1.py',
+    'cases\\功能2.py',
+    'cases\\customer\\',
+    'cases\\customer\\功能21.py',
+    'cases\\order\\',
+    'cases\\order\\功能31.py',
+] 
+
+
+遍历 exec_table 中的每个对象：  {filepath : meta} 
+    如果 该执行对象 type 是 st， 说明是 套件目录：
+        如果有 tear_down, 到 exec_list 中 找到合适的位置，插入 tear_down 操作
+
+执行完此步骤后， exec_list 示例如下
+[
+    'cases\\',
+    'cases\\.功能3.py',
+    'cases\\功能1.py',
+    'cases\\功能2.py',
+    'cases\\customer\\',
+    'cases\\customer\\功能21.py',
+    'cases\\customer\\--teardown--',
+    'cases\\order\\',
+    'cases\\order\\功能31.py',
+    'cases\\order\\--teardown--',
+    'cases\\--teardown--'
+] 
+    
+
+2. 然后执行测试
+
+suite_setup_failed_list = [] 记录初始化失败的套件
+
+for name in  exec_list：    
+    检查 这个name 是否以 suite_setup_failed_list 里面的内容开头
+    如果是 continue
+
+    if name 以 --teardown--  结尾：
+        去掉 --teardown-- 部分，找到 exec_table中的对象执行 teardown
+    else：
+        以name 为key， 找到 exec_table中的对象：
+            if 类型是 st ：
+                如果 有 suite_setup:
+                    执行 suite_setup
+                    如果 suite_setup 抛异常：
+                        添加 name 到 suite_setup_failed_list 
+            elif 类型是 case：
+                执行 case里面的用例：
+                    先执行用例的 setup
+                    如果 setup 异常，后面的 teststeps 和 teardown都不执行
+
+
+''' 
+class Runner:
+    
+    curRunningCase = None 
+
+    # 记录所有测试用例的执行结果，每个元素都是用户定义的测试用例类实例
+    #  执行过程中写入了测试几个到每个测试用例类中
+    case_list = []
+
+    @classmethod
+    def run(cls,):
+        
+        signal.info(
+            ('\n\n===   [ 执行测试用例 ]  === \n',
+            '\n\n===   [ execute test cases ]  === \n')[l.n]
+        )
+
+        # 如果本次没有可以执行的用例（可能是过滤项原因），直接返回
+        if not Collector.exec_list:
+            signal.error(('!! 没有可以执行的测试用例','!! No cases to run')[l.n])
+            return 2 # 2 表示没有可以执行的用例
+
+        signal.info(f"{('预备执行用例数量','Number of cases to run')[l.n]} : {Collector.case_number}\n")
+
+        # 执行用例时，为每个用例分配一个id，方便测试报告里面根据id跳转到用例
+        cls.caseId = 0
+
+        # 1. 先保证 exec_list 中 该teardown的地方插入 teardown记录
+        for name,meta in Collector.exec_table.items():
+            if meta['type'] == 'st' and 'suite_teardown' in meta:
+                cls._insertTeardownToExecList(name)
+
+        # print(Collector.exec_list)
+
+        # 2. 然后执行自动化流程         
+        signal.test_start()
+        cls.execTest()
+        signal.test_end(cls)
+
+        from hytest.common import  GSTORE
+        # 0 表示执行成功 , 1 表示有错误 ， 2 表示没有可以执行的用例, 3 表示未知错误
+        return GSTORE.get('---ret---',3)
+
+    @classmethod
+    def execTest(cls):
+
+        suite_setup_failed_list = [] # 记录初始化失败的套件
+        for name in  Collector.exec_list:
+            # 检查 这个name 是否属于套件初始化失败影响的范围
+            affected = False
+            for suite_setup_failed in suite_setup_failed_list:
+                if name.startswith(suite_setup_failed):
+                    affected = True
+                    break
+            if affected:
+                continue
+
+            # 套件目录清除
+            if name.endswith('--teardown--'):
+                # 去掉 --teardown-- 部分
+                name = name.replace('--teardown--','')
+                # 找到 exec_table 中的对象执行 teardown
+                suite_teardown = Collector.exec_table[name]['suite_teardown']
+                                
+                signal.teardown_begin(name,'suite_dir')
+                begin_time = time.time()  
+                
+                try:
+                    # suite_teardown()
+                    dependency_injection_call(suite_teardown)
+                except Exception as e:
+                    # 套件目录 清除失败
+                    signal.teardown_fail(name,'suite_dir', e, cls.trim_stack_trace(traceback.format_exc()))
+                    
+                end_time = time.time()
+                duration = end_time - begin_time                            
+                signal.teardown_end(name, 'suite_dir', duration)
+
+
+            else:
+                meta = Collector.exec_table[name]
+
+                # 进入套件目录
+                if meta['type'] == 'st': 
+
+                    signal.enter_suite(name,'dir')
+
+                    suite_setup = meta.get('suite_setup')
+                    
+                    # 套件目录初始化
+                    if suite_setup:                     
+                        signal.setup_begin(name,'suite_dir')
+                        begin_time = time.time()   
+                        try:                            
+                            # suite_setup()  
+                            dependency_injection_call(suite_setup)
+                        except Exception as e:
+                            # 套件目录 初始化失败,
+                            signal.setup_fail(name,'suite_dir', e, cls.trim_stack_trace(traceback.format_exc()))
+                            # 记录到 初始化失败目录列表 中， 该套件目录内容都不会再执行
+                            suite_setup_failed_list.append(name)
+
+                        end_time = time.time()
+                        duration = end_time - begin_time 
+                        signal.setup_end(name, 'suite_dir', duration)
+
+                # 进入套件文件
+                elif meta['type'] == 'casefile': 
+
+                    signal.enter_suite(name,'file')
+                    
+                    # 套件文件 初始化
+                    suite_setup = meta.get('suite_setup')
+                    if suite_setup:                           
+                        signal.setup_begin(name,'suite_file') 
+                        begin_time = time.time()    
+                        try:                            
+                            # suite_setup()
+                            dependency_injection_call(suite_setup)
+                        except Exception as e:
+                            # 套件文件 初始化失败 
+                            signal.setup_fail(name,'suite_file', e, cls.trim_stack_trace(traceback.format_exc()))
+                            end_time = time.time()
+                            duration = end_time - begin_time                            
+                            signal.setup_end(name, 'suite_file', duration)
+                            # 该套件文件内容都不会再执行
+                            continue 
+                        
+                        end_time = time.time()
+                        duration = end_time - begin_time                            
+                        signal.setup_end(name, 'suite_file', duration)
+
+                    # 执行套件文件里面的用例
+                    cls._exec_cases(meta)
+                    
+                    # 套件文件 清除
+                    suite_teardown = meta.get('suite_teardown')
+                    if suite_teardown:
+                        signal.teardown_begin(name,'suite_file')   
+                        begin_time = time.time()                       
+                        try:
+                            # suite_teardown()
+                            dependency_injection_call(suite_teardown)
+                        except Exception as e:
+                            # 套件文件 清除失败
+                            signal.teardown_fail(name, 'suite_file', e, cls.trim_stack_trace(traceback.format_exc()))
+                            
+                        end_time = time.time()
+                        duration = end_time - begin_time                            
+                        signal.teardown_end(name, 'suite_file', duration)
+
+
+    #  exec_list 中 找到 stName 对应的 teardown的地方插入 teardown记录
+    @classmethod
+    def _insertTeardownToExecList(cls,stName):
+        findStart = False
+        insertPos = -1
+        for pos, name in enumerate(Collector.exec_list):
+            # 这样肯定会先找到 等于 stName 的位置
+            if not findStart:
+                if name != stName:
+                    continue
+                else:
+                    findStart = True
+            else:
+                # print(name,stName)
+                # 接下来找 不以 stName 开头的那个元素，就在此位置插入
+                if not name.startswith(stName):
+                    insertPos = pos
+                    break
+        
+        # 直到最后也没有找到，是用例根目录，添加到最后
+        tearDownName = stName+'--teardown--'
+
+        if insertPos == -1:
+            Collector.exec_list.append(tearDownName)
+        else:            
+            Collector.exec_list.insert(insertPos,tearDownName)
+            
+
+    # 执行套件文件里面的多个用例
+    @classmethod
+    def _exec_cases(cls,meta):
+        # 缺省  test_setup test_teardown
+        test_setup = meta.get('test_setup')
+        test_teardown = meta.get('test_teardown')
+
+        # 取出每一个用例
+        for case in meta['cases']:
+            # 记录到 cls.case_list 中，方便测试结束后，遍历每个测试用例
+            cls.case_list.append(case)
+
+            case_className = type(case).__name__
+
+            # 用例 id 自动递增 分配， 这个id 主要是 作为 产生的HTML日志里面的html元素id
+            cls.caseId += 1  
+
+            case._case_begin_time = time.time()
+            signal.enter_case(cls.caseId, case.name, case_className)
+            
+            # 记录当前执行的case
+            cls.curRunningCase = case
+            
+            # 如果用例有 setup
+            caseSetup = getattr(case,'setup',None)
+
+            setupFunc = None
+            if caseSetup:
+                setupFunc = caseSetup
+                setupType = 'case'
+            elif test_setup: # 如果用例没有 setup ，但是有缺省  test_setup
+                setupFunc = test_setup
+                setupType = 'case_default'
+
+            if setupFunc:
+                case._hytest_case_setup_begin_time = time.time()
+                signal.setup_begin(case.name, setupType)
+                
+                try:
+                    # setupFunc()
+                    dependency_injection_call(setupFunc)
+                    
+                    case._hytest_case_setup_end_time = time.time()
+                    case._setup_duration = case._hytest_case_setup_end_time - case._hytest_case_setup_begin_time
+                    signal.setup_end(case.name, setupType, case._setup_duration)
+                except Exception as e:
+                    signal.setup_fail(case.name, setupType, e, cls.trim_stack_trace(traceback.format_exc()))
+                    continue # 初始化失败，这个用例的后续也不用执行了                
+
+            signal.case_steps(case.name)
+
+            # 执行用例
+            try:
+                # 先预设结果为通过，如果有检查点不通过，那里会设置为fail
+                case.execRet = 'pass'
+                
+                case._hytest_case_steps_begin_time = time.time()
+               
+                dependency_injection_call(case.teststeps)
+            
+            except CheckPointFail as e:   
+                case.execRet = 'fail'
+                case.error = e 
+                case.stacktrace = cls.trim_stack_trace(traceback.format_exc())
+                   
+            except Exception as e:  
+                case.execRet = 'abort'
+                case.error = e
+                case.stacktrace = cls.trim_stack_trace(traceback.format_exc())
+
+
+            # 用例结果 通知 各日志模块            
+            case._hytest_case_steps_end_time = time.time()
+            case._steps_duration = case._hytest_case_steps_end_time - case._hytest_case_steps_begin_time
+            signal.case_result(case)  
+                
+
+
+            # 用例 teardown            
+            caseTeardown = getattr(case,'teardown',None)
+
+            teardownFunc = None
+            if caseTeardown:
+                teardownFunc = caseTeardown
+                teardownType = 'case'
+            elif test_teardown: # 如果用例没有 teardown ，但是有缺省  test_teardown
+                teardownFunc = test_teardown
+                teardownType = 'case_default'
+                
+            if teardownFunc:
+                case._hytest_case_teardown_begin_time = time.time()
+                signal.teardown_begin(case.name, teardownType)
+                try:
+                    # teardownFunc()   
+                    dependency_injection_call(teardownFunc)
+                    case._hytest_case_teardown_end_time = time.time()
+                    case._teardown_duration = case._hytest_case_teardown_end_time - case._hytest_case_teardown_begin_time
+                    signal.teardown_end(case.name, teardownType, case._teardown_duration)
+                except Exception as e:
+                    signal.teardown_fail(case.name, teardownType, e, cls.trim_stack_trace(traceback.format_exc()))
+           
+           
+            # 离开用例
+            case._case_end_time = time.time()
+            case._case_duration = case._case_end_time - case._case_begin_time
+            signal.leave_case(cls.caseId, duration=case._case_duration)
+
+    @classmethod
+    def trim_stack_trace(cls, stacktrace):
+
+        # 依赖注入失败, 删除调用堆栈前面一大段信息
+        if 'hytest.utils.runner.DenpendencyInjectionFail:' in stacktrace:  
+            stacktrace = stacktrace.split("hytest.utils.runner.DenpendencyInjectionFail:",1)[-1].strip()
+            return stacktrace
+        
+
+        if 'in dependency_injection_call' in  stacktrace:
+            stacktrace = stacktrace.split("in dependency_injection_call",1)[-1].split("\n",2)[-1].strip()
+        
+        if stacktrace.startswith('~~~~~'):
+                stacktrace = stacktrace.split("\n",1)[1].strip() 
+        
+        # 如果 Traceback 后3行信息固定的是 common.py 里面的 CheckPointFail ，也多余， 不要
+        if ', in CHECK_POINT' in  stacktrace:
+            stacktrace = stacktrace.rsplit("\n",4)[0].strip()
+
+        return stacktrace
+
+
+if __name__ == '__main__':
+    Collector.run(
+        # suitename_filters=['cust*'],
+        # casename_filters=['cust*','or*'],
+        # tag_include_expr="(tagmatch('优先级4')) or (tagmatch('UITest'))  or  (tagmatch('Web*'))"
+        )
+
+    # print(Collector.exec_table)
+
+    Runner.run()
+
