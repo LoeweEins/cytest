@@ -293,6 +293,7 @@ class Collector:
                         case = item()
                         case.name, case.para = caseData['name'], caseData['para'],               
                         meta['cases'].append(case)  
+                        # meta中'cases'既保存名字，也保存参数
 
                 # 没有 name 也没有 ddt_cases， 类名作为用例名
                 else:
@@ -448,7 +449,7 @@ Runner负责：
 每个 case 的 setup / steps / teardown 怎么调？
 异常怎么处理？日志和报告怎么通知？
 
-1. 先保证 exec_list 中 该teardown的地方插入 teardown记录
+1. 先保证 exec_list 中 该teardown的地方插入 teardown
 
 
 执行前， exec_list 示例如下 目录
@@ -463,6 +464,7 @@ Runner负责：
     'cases\\order\\功能31.py',
 ] 
 
+list只有路径，但是table有路径和meta信息
 
 遍历 exec_table 中的每个对象：  {filepath : meta} 
     如果 该执行对象 type 是 st， 说明是 套件目录：
