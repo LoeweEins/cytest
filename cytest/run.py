@@ -6,53 +6,92 @@ from .cfg import l, Settings
 import argparse
 from .product import version
 
+'''
+命令行解析器创建、参数处理：
+1. 创建一个解析器：parser = argparse.ArgumentParser()
+2. 用几十个 .add_argument() 把命令行参数定义出来
+3. 调用args = parser.parse_args() 读取命令行输入
+4. 根据解析后的 args：
+    - 设置语言/日志等级/报告标题
+    - 创建新项目目录
+    - 检查 case_dir 是否存在
+    - 生成标签过滤表达式
+    - 调用 Collector.run() 收集用例
+    - 调用 Runner.run() 执行用例
+    - 返回结果
+cytest 命令行工具的入口函数
+'''
 
-def tagExpressionGen(argstr):
+# 传入的是 args.tag 列表
+# --tag " '接口' and '高优先级' " --tag 冒烟
+# args.tag == ['冒烟', "'接口' and '高优先级'"]
+# "tagmatch('冒烟') or (tagmatch('接口') and tagmatch('高优先级'))"
+def tagExpressionGen(argstr: list[str]) -> str:
     tagRules = []
     for part in argstr:
         # 有单引号，是表达式
         if "'" in part:
+            # re.sub 替换所有单引号内的内容为 tagmatch('tag')
+            # 详细看一下这一行做了什么
+            # 好像直接用 and 连接了 各个 tagmatch() ？
             rule = re.sub(r"'.+?'", lambda m :f'tagmatch({m.group(0)})' , part)
-            tagRules.append(f'({rule})')
+            tagRules.append(f'({rule})') 
         # 是简单标签名
         else:
             rule = f"tagmatch('{part}')"
-            tagRules.append(f'{rule}')
+            tagRules.append(f'{rule}') 
     return ' or '.join(tagRules)
 
+
 def run() :
+    # 调库创建 parser 对象
     parser = argparse.ArgumentParser()
-    parser.add_argument('--version', action='version', version=f'cytest v{version}',
+
+    parser.add_argument('--version', 
+                        action='version', # 用户敲 --version
+                        version=f'cytest v{version}', # 打印版本号，退出程序
                         help=("显示版本号", 'display cytest version')[l.n])
-    parser.add_argument('--lang', choices=['zh', 'en', 'de'],
+    
+    parser.add_argument('--lang', 
+                        choices=['zh', 'en', 'de'], # 可选值
                         help=("设置工具语言", 'set language')[l.n])
+    
     parser.add_argument('--new', metavar='project_dir',
                         help=("创建新项目目录", "create a project folder")[l.n])
+    
     parser.add_argument("case_dir", nargs='?', default='cases',
                         help=("用例根目录", "")[l.n])
+    
     parser.add_argument("--loglevel", metavar='level_number', type=int, default=3,
                         help=("日志级别 0,1,2,3,4,5(数字越大，日志越详细)", "log level 0,1,2,3,4,5(bigger for more info)")[l.n])
 
     parser.add_argument('--auto_open_report', choices=['yes', 'no'], default='yes',
                         help=("测试结束不自动打开报告", "don't open report automatically after testing")[l.n])
+    
     parser.add_argument("--report_title", metavar='report_title',
                         default=['测试报告','Test Report'][l.n],
                         help=['指定测试报告标题','set test report title'][l.n])
+    
     parser.add_argument("--report_url_prefix", metavar='url_prefix',
                         default='',
                         help=['测试报告URL前缀','test report URL prefix'][l.n])
 
     parser.add_argument("--test", metavar='case_name', action='append', default=[],
                         help=("用例名过滤，支持通配符", "filter by case name")[l.n])
+    
     parser.add_argument("--suite", metavar='suite_name', action='append', default=[],
                         help=("套件名过滤，支持通配符", "filter by suite name")[l.n])
+    
     parser.add_argument("--tag", metavar='tag_expression', action='append', default=[],
                         help=("标签名过滤，支持通配符", "filter by tag name")[l.n])
+    
     parser.add_argument("--tagnot", metavar='tag_expression', action='append', default=[],
                         help=("标签名反向过滤，支持通配符", "reverse filter by tag name")[l.n])
+    
     parser.add_argument("-A", "--argfile", metavar='argument_file',
                         type=argparse.FileType('r', encoding='utf8'),
                         help=("使用参数文件", "use argument file")[l.n])
+    
     parser.add_argument("-saic", "--set-ai-context", metavar='ai_context_file',
                         type=str,
                         help=("设置 AI Context 文件（比如 GEMINI.md）内容，加入cytest使用方法", "set AI context file(like GEMINI.md) by appending cytest guide")[l.n])
