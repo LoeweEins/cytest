@@ -228,7 +228,7 @@ class Collector:
 
         # 遍历模块内 所有属性和对象（属性所指的对象）
         for name,item in module.__dict__.items():
-            # __ 开头的名字肯定不是hytest关键名，跳过
+            # __ 开头的名字肯定不是cytest关键名，跳过
             if name.startswith('__'):
                 continue
             # 对应一个模块文件的，肯定是外部导入的模块，跳过
@@ -558,7 +558,7 @@ class Runner:
         cls.execTest() ########################## 紧接着在后面定义了 #############################
         signal.test_end(cls)
 
-        from hytest.common import  GSTORE
+        from cytest.common import  GSTORE
         # 0 表示执行成功 , 1 表示有错误 ， 2 表示没有可以执行的用例, 3 缺省值 表示未知错误
         return GSTORE.get('---ret---',3)
 
@@ -740,15 +740,15 @@ class Runner:
                 setupType = 'case_default'
 
             if setupFunc:
-                case._hytest_case_setup_begin_time = time.time()
+                case._cytest_case_setup_begin_time = time.time()
                 signal.setup_begin(case.name, setupType)
                 
                 try:
                     # setupFunc()
                     dependency_injection_call(setupFunc)
                     
-                    case._hytest_case_setup_end_time = time.time()
-                    case._setup_duration = case._hytest_case_setup_end_time - case._hytest_case_setup_begin_time
+                    case._cytest_case_setup_end_time = time.time()
+                    case._setup_duration = case._cytest_case_setup_end_time - case._cytest_case_setup_begin_time
                     signal.setup_end(case.name, setupType, case._setup_duration)
                 except Exception as e:
                     signal.setup_fail(case.name, setupType, e, cls.trim_stack_trace(traceback.format_exc()))
@@ -762,7 +762,7 @@ class Runner:
                 # 先预设结果为通过，如果有检查点不通过，那里会设置为fail
                 case.execRet = 'pass'
                 
-                case._hytest_case_steps_begin_time = time.time()
+                case._cytest_case_steps_begin_time = time.time()
                
                 dependency_injection_call(case.teststeps)
             
@@ -778,8 +778,8 @@ class Runner:
 
 
             # 用例结果 通知 各日志模块            
-            case._hytest_case_steps_end_time = time.time()
-            case._steps_duration = case._hytest_case_steps_end_time - case._hytest_case_steps_begin_time
+            case._cytest_case_steps_end_time = time.time()
+            case._steps_duration = case._cytest_case_steps_end_time - case._cytest_case_steps_begin_time
             
             signal.case_result(case)  
                 
@@ -797,13 +797,13 @@ class Runner:
                 teardownType = 'case_default'
                 
             if teardownFunc:
-                case._hytest_case_teardown_begin_time = time.time()
+                case._cytest_case_teardown_begin_time = time.time()
                 signal.teardown_begin(case.name, teardownType)
                 try:
                     # teardownFunc()   
                     dependency_injection_call(teardownFunc)
-                    case._hytest_case_teardown_end_time = time.time()
-                    case._teardown_duration = case._hytest_case_teardown_end_time - case._hytest_case_teardown_begin_time
+                    case._cytest_case_teardown_end_time = time.time()
+                    case._teardown_duration = case._cytest_case_teardown_end_time - case._cytest_case_teardown_begin_time
                     signal.teardown_end(case.name, teardownType, case._teardown_duration)
                 except Exception as e:
                     signal.teardown_fail(case.name, teardownType, e, cls.trim_stack_trace(traceback.format_exc()))
@@ -818,8 +818,8 @@ class Runner:
     def trim_stack_trace(cls, stacktrace):
 
         # 依赖注入失败, 删除调用堆栈前面一大段信息
-        if 'hytest.utils.runner.DenpendencyInjectionFail:' in stacktrace:  
-            stacktrace = stacktrace.split("hytest.utils.runner.DenpendencyInjectionFail:",1)[-1].strip()
+        if 'cytest.utils.runner.DenpendencyInjectionFail:' in stacktrace:  
+            stacktrace = stacktrace.split("cytest.utils.runner.DenpendencyInjectionFail:",1)[-1].strip()
             return stacktrace
         
 
@@ -834,6 +834,7 @@ class Runner:
             stacktrace = stacktrace.rsplit("\n",4)[0].strip()
 
         return stacktrace
+        # 干净的栈信息，用于日志显示
 
 
 if __name__ == '__main__':
