@@ -56,46 +56,74 @@ def run() :
                         choices=['zh', 'en', 'de'], # 可选值
                         help=("设置工具语言", 'set language')[l.n])
     
-    parser.add_argument('--new', metavar='project_dir',
+    parser.add_argument('--new', 
+                        metavar='project_dir', # 占位符 
                         help=("创建新项目目录", "create a project folder")[l.n])
     
-    parser.add_argument("case_dir", nargs='?', default='cases',
-                        help=("用例根目录", "")[l.n])
+    parser.add_argument("case_dir", # 位置参数
+                        nargs='?', # 可选
+                        default='cases',
+                        help=("用例根目录", "root directory of test cases")[l.n])
     
-    parser.add_argument("--loglevel", metavar='level_number', type=int, default=3,
+    parser.add_argument("--loglevel", 
+                        metavar='level_number', 
+                        type=int, 
+                        default=3,
                         help=("日志级别 0,1,2,3,4,5(数字越大，日志越详细)", "log level 0,1,2,3,4,5(bigger for more info)")[l.n])
 
-    parser.add_argument('--auto_open_report', choices=['yes', 'no'], default='yes',
+    parser.add_argument('--auto_open_report', 
+                        choices=['yes', 'no'], 
+                        default='yes',
                         help=("测试结束不自动打开报告", "don't open report automatically after testing")[l.n])
     
-    parser.add_argument("--report_title", metavar='report_title',
+    parser.add_argument("--report_title", 
+                        metavar='report_title',
                         default=['测试报告','Test Report'][l.n],
                         help=['指定测试报告标题','set test report title'][l.n])
     
-    parser.add_argument("--report_url_prefix", metavar='url_prefix',
-                        default='',
+    # 方便在 jenkins，http server 访问
+    parser.add_argument("--report_url_prefix", 
+                        metavar='url_prefix',
+                        default='', 
                         help=['测试报告URL前缀','test report URL prefix'][l.n])
 
-    parser.add_argument("--test", metavar='case_name', action='append', default=[],
+    parser.add_argument("--test", 
+                        metavar='case_name', 
+                        action='append', 
+                        default=[], # 'append' 可以多次指定
                         help=("用例名过滤，支持通配符", "filter by case name")[l.n])
     
-    parser.add_argument("--suite", metavar='suite_name', action='append', default=[],
+    parser.add_argument("--suite", 
+                        metavar='suite_name', 
+                        action='append', 
+                        default=[],
                         help=("套件名过滤，支持通配符", "filter by suite name")[l.n])
     
-    parser.add_argument("--tag", metavar='tag_expression', action='append', default=[],
+    parser.add_argument("--tag", 
+                        metavar='tag_expression', 
+                        action='append', 
+                        default=[], 
                         help=("标签名过滤，支持通配符", "filter by tag name")[l.n])
     
-    parser.add_argument("--tagnot", metavar='tag_expression', action='append', default=[],
-                        help=("标签名反向过滤，支持通配符", "reverse filter by tag name")[l.n])
+    parser.add_argument("--tagnot", 
+                        metavar='tag_expression', 
+                        action='append', 
+                        default=[], 
+                        help=("标签名排除，支持通配符", "reverse filter by tag name")[l.n])
     
-    parser.add_argument("-A", "--argfile", metavar='argument_file',
+    # 从文件读取参数
+    parser.add_argument("-A", "--argfile", 
+                        metavar='argument_file',
                         type=argparse.FileType('r', encoding='utf8'),
                         help=("使用参数文件", "use argument file")[l.n])
     
-    parser.add_argument("-saic", "--set-ai-context", metavar='ai_context_file',
+    parser.add_argument("-saic", "--set-ai-context", 
+                        metavar='ai_context_file',
                         type=str,
                         help=("设置 AI Context 文件（比如 GEMINI.md）内容，加入cytest使用方法", "set AI context file(like GEMINI.md) by appending cytest guide")[l.n])
 
+
+# ----------------------------------- 读取参数后做的事 -----------------------------------
     args = parser.parse_args()
 
     # 有参数放在文件中，必须首先处理
@@ -104,6 +132,9 @@ def run() :
         print(fileArgs)
         args = parser.parse_args(fileArgs,args)
 
+    '''
+    这一段到底有什么用
+    '''
     # 设置AI上下文内容
     if args.set_ai_context:
         ctxFile = args.set_ai_context
@@ -131,18 +162,16 @@ def run() :
     if args.lang:
         l.n = l.LANGS[args.lang]
 
-    # 报告标题
+    # 报告标题/自动打开/测试报告URL前缀
     Settings.report_title = args.report_title
-
-    # 测试结束后，是否自动打开测试报告
     Settings.auto_open_report = True if args.auto_open_report=='yes' else False
-
-    # 测试结束后，要显示的测试报告的url前缀,比如： run.bat --report_url_prefix http://127.0.0.1
-    # 可以本机启动http服务，比如：python -m http.server 80 --directory log
-    # 方便 jenkins上查看
     Settings.report_url_prefix = args.report_url_prefix
+    # 测试结束后，要显示的测试报告的url前缀,比如： run.sh --report_url_prefix http://127.0.0.1
+    # 可以本机启动http服务，比如：python3 -m http.server 80 --directory log
+    # 方便 jenkins上查看
 
-    # 创建项目目录
+
+    # 创建项目目录，建立模版文件
     if args.new:
         projDir =  args.new
         if os.path.exists(projDir):
@@ -170,6 +199,7 @@ def run() :
         exit()
 
 
+    # 目录是否存在且为目录
     if not os.path.exists(args.case_dir) :
         print(f' {args.case_dir} {("目录不存在，工作目录为：","folder not exists, workding dir is:")[l.n]} {os.getcwd()}')
         exit(2)  #  '2' stands for no test cases to run
@@ -197,12 +227,12 @@ def run() :
 
     print(f'''           
     *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *     
-    *       cytest {version}            www.byhy.net       *
+    *       cytest {version}                           *
     *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *
     '''
     )
 
-    os.makedirs('log/imgs', exist_ok=True)
+    os.makedirs('log/imgs', exist_ok=True) # 创建日志图片目录
 
     try:
         Collector.run(
@@ -225,12 +255,15 @@ def run() :
 
     # keep 10 report files at most
     ReportFileNumber = 10
+
     import glob
-    reportFiles = glob.glob('./log/report_*.html')
+    reportFiles = glob.glob('./log/report_*.html') # 找出所有报告文件
     fileNum = len(reportFiles)
+
+    # 删除旧 html 报告，只保留最新 10 个
     if fileNum >= ReportFileNumber:
         reportFiles.sort()
-        for rf in reportFiles[:fileNum-ReportFileNumber]:
+        for rf in reportFiles[:fileNum - ReportFileNumber]:
             try:
                 os.remove(rf)
             except:...
