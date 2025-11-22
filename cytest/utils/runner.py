@@ -518,6 +518,13 @@ class Runner:
     #  执行过程中写入了测试几个到每个测试用例类中
     case_list = []
 
+
+    # 0）没有用例就返回 2
+    # 1）为 exec_list 中的每个 st 插入 teardown
+    # 2）发送test_start 信号
+    # 3）执行测试树 execTest()
+    # 4）发送 test_end 信号
+    # 5）从 GSTORE 中获取最终结果返回
     @classmethod
     def run(cls,):
         
@@ -536,27 +543,34 @@ class Runner:
         # 执行用例时，为每个用例分配一个id，方便测试报告里面根据id跳转到用例
         cls.caseId = 0
 
+
         # 1. 先保证 exec_list 中 该teardown的地方插入 teardown记录
+        # 回头再看一下 ._insertTeardownToExecList()方法
         for name,meta in Collector.exec_table.items():
             if meta['type'] == 'st' and 'suite_teardown' in meta:
                 cls._insertTeardownToExecList(name)
+        
 
         # print(Collector.exec_list)
 
         # 2. 然后执行自动化流程         
         signal.test_start()
-        cls.execTest()
+        cls.execTest() ########################## 紧接着在后面定义了 #############################
         signal.test_end(cls)
 
         from hytest.common import  GSTORE
-        # 0 表示执行成功 , 1 表示有错误 ， 2 表示没有可以执行的用例, 3 表示未知错误
+        # 0 表示执行成功 , 1 表示有错误 ， 2 表示没有可以执行的用例, 3 缺省值 表示未知错误
         return GSTORE.get('---ret---',3)
 
     @classmethod
     def execTest(cls):
 
         suite_setup_failed_list = [] # 记录初始化失败的套件
+
+
+        #--------------------- 遍历 exec_list 中的每个元素 -----------------------
         for name in  Collector.exec_list:
+
             # 检查 这个name 是否属于套件初始化失败影响的范围
             affected = False
             for suite_setup_failed in suite_setup_failed_list:
@@ -566,6 +580,7 @@ class Runner:
             if affected:
                 continue
 
+
             # 套件目录清除
             if name.endswith('--teardown--'):
                 # 去掉 --teardown-- 部分
@@ -574,11 +589,11 @@ class Runner:
                 suite_teardown = Collector.exec_table[name]['suite_teardown']
                                 
                 signal.teardown_begin(name,'suite_dir')
-                begin_time = time.time()  
+                begin_time = time.time()  # 记录开始时间
                 
                 try:
                     # suite_teardown()
-                    dependency_injection_call(suite_teardown)
+                    dependency_injection_call(suite_teardown) # 放函数名或者方法名，自动调用
                 except Exception as e:
                     # 套件目录 清除失败
                     signal.teardown_fail(name,'suite_dir', e, cls.trim_stack_trace(traceback.format_exc()))
@@ -615,12 +630,12 @@ class Runner:
                         duration = end_time - begin_time 
                         signal.setup_end(name, 'suite_dir', duration)
 
-                # 进入套件文件
+                # 进入用例文件
                 elif meta['type'] == 'casefile': 
 
                     signal.enter_suite(name,'file')
                     
-                    # 套件文件 初始化
+                    # 用例文件 初始化
                     suite_setup = meta.get('suite_setup')
                     if suite_setup:                           
                         signal.setup_begin(name,'suite_file') 
@@ -644,7 +659,7 @@ class Runner:
                     # 执行套件文件里面的用例
                     cls._exec_cases(meta)
                     
-                    # 套件文件 清除
+                    # 用例文件 清除
                     suite_teardown = meta.get('suite_teardown')
                     if suite_teardown:
                         signal.teardown_begin(name,'suite_file')   
@@ -696,7 +711,8 @@ class Runner:
         test_setup = meta.get('test_setup')
         test_teardown = meta.get('test_teardown')
 
-        # 取出每一个用例
+
+        #------------------ 取出每一个用例，记录一些需要写在日志里的信息 -----------------------
         for case in meta['cases']:
             # 记录到 cls.case_list 中，方便测试结束后，遍历每个测试用例
             cls.case_list.append(case)
@@ -712,7 +728,7 @@ class Runner:
             # 记录当前执行的case
             cls.curRunningCase = case
             
-            # 如果用例有 setup
+            #---------------- 如果用例有 setup，就执行 setup -----------------
             caseSetup = getattr(case,'setup',None)
 
             setupFunc = None
@@ -740,7 +756,8 @@ class Runner:
 
             signal.case_steps(case.name)
 
-            # 执行用例
+
+            #------------------------------- 执行用例 -------------------------------
             try:
                 # 先预设结果为通过，如果有检查点不通过，那里会设置为fail
                 case.execRet = 'pass'
@@ -763,11 +780,12 @@ class Runner:
             # 用例结果 通知 各日志模块            
             case._hytest_case_steps_end_time = time.time()
             case._steps_duration = case._hytest_case_steps_end_time - case._hytest_case_steps_begin_time
+            
             signal.case_result(case)  
                 
 
 
-            # 用例 teardown            
+            #--------------------------------- 用例 teardown -----------------------------       
             caseTeardown = getattr(case,'teardown',None)
 
             teardownFunc = None
