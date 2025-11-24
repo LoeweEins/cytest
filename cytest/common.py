@@ -5,9 +5,10 @@ from .utils.runner import Runner, CheckPointFail
 from .cfg import l
 
 from datetime import datetime
-import inspect
-import ast
-import executing 
+import inspect # 获取CHECK_POINT()行的运行环境，变量、源代码、调用栈
+import executing # 找到这行代码在Python内部 语法树 中的节点
+import ast # 分析表达式结构，提取左右两边的内容，反解析成字符串
+
 '''
 功能
 定义 GSTORE
@@ -21,24 +22,63 @@ CHECK_POINT("检查登录是否成功", response.status_code==200 )
 '''
 
 
+'''
+CHECK_POINT("检查登录", response.code == 200)
+↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+Call
+ ├── func: CHECK_POINT
+ └── args:
+      ├── Str("检查登录")
+      └── Compare
+            ├── left: Attribute(response.code)
+            ├── op: Eq
+            └── right: Constant(200)
+
+AST：表示 代码结构和语义内容的 语法树
+
+
+ast.Compare() 节点结构：
+.left 左表达式
+.ops 比较符号
+.comparators 右表达式列表 
+
+frame：当前代码运行时的执行环境
+f_back：它的前一个调用者，就是call
+f_code：函数的代码对象
+f_locals：函数的局部变量
+f_globals：全局变量
+f_lineno：当前执行的代码行号
+f_back：上一帧
+'''
 
 
 
-class _GlobalStore(dict):
+
+
+
+
+
+
+
+class _GlobalStore(dict): # 继承自 dict
     
+    # print(GSTORE.a)
     def __getattr__(self, key, default=None):
         if key not in self:
             return default
         return self[key]
     
+    # GSTORE.a = 123
     def __setattr__(self, key, value):
         self[key] = value
     
+    # del GSTORE.a
     def __delattr__(self, key):
         if key not in self:
             return
         del self[key]
 
+    # GSTORE['a']
     def __getitem__(self, key, default=None):
         return self.get(key, default)  
 
@@ -56,8 +96,9 @@ def INFO(*args, sep=' ', end='\n'):
     sep  : the char to join the strings of args objects, default is space char
     end  : the end char of the content, default is new line char.
     """
-    
+    # 把输入的 args 拼成 str 写进 log
     logStr = sep.join([str(arg) for arg in args]) + end
+    # 通过 signal 发送 info 信号
     signal.info(logStr)
 
 def STEP(stepNo:int,desc:str):
@@ -74,7 +115,9 @@ def STEP(stepNo:int,desc:str):
     signal.step(stepNo,desc)
 
 
-
+# 比较操作符映射表
+# 用于反向解析，显示比较表达式的左右值
+# AST 节点类型 到 操作符字符串 的映射
 OP_MAP = {
     ast.Eq: "==",
     ast.NotEq: "!=",
@@ -87,6 +130,8 @@ OP_MAP = {
     ast.In: "in",
     ast.NotIn: "not in",
 }
+
+
 
 def CHECK_POINT(desc:str, condition, failStop=True, failLogScreenWebDriver = None):
     """
@@ -111,15 +156,16 @@ def CHECK_POINT(desc:str, condition, failStop=True, failLogScreenWebDriver = Non
     
     # ❌  check point fail
     try:
+        # 获取调用帧，inspect 模块
         caller_frame = inspect.currentframe().f_back
 
-        # 获取调用节点    
+        # 从调用帧处，获取调用节点，也就是call节点，用 executing
         ex = executing.Source.executing(caller_frame)
         call_node = ex.node
 
-        compaireInfo = ''
+        compareInfo = ''
         
-        # 确保拿到了一个调用节点
+        # 确保拿到了一个调用节点，也就是 call 节点，用 ast 模块判断
         if isinstance(call_node, ast.Call):
 
             arg_node = call_node.args[1]
@@ -129,7 +175,7 @@ def CHECK_POINT(desc:str, condition, failStop=True, failLogScreenWebDriver = Non
 
                 # * 反解析参数节点以获得完整表达式 ➡️🔍💲⬅️❌ 🔔💡 *
                 full_expression_str = ast.unparse(arg_node).strip()
-                compaireInfo += (f" 🔎 {full_expression_str} ")
+                compareInfo += (f" 🔎 {full_expression_str} ")
 
                 left_expr_str = ast.unparse(arg_node.left).strip()
                 right_expr_str = ast.unparse(arg_node.comparators[0]).strip()
@@ -137,33 +183,37 @@ def CHECK_POINT(desc:str, condition, failStop=True, failLogScreenWebDriver = Non
                 # op_node = arg_node.ops[0]
                 # op_str = OP_MAP.get(type(op_node), "未知比较操作符")
 
-                caller_globals = caller_frame.f_globals
-                caller_locals = caller_frame.f_locals
+                caller_globals = caller_frame.f_globals # 调用帧的全局变量
+                caller_locals = caller_frame.f_locals # 调用帧的局部变量
 
+                #全局和局部变量都要传入 eval 表达式中
                 left_val = eval(left_expr_str, caller_globals, caller_locals)
                 right_val = eval(right_expr_str, caller_globals, caller_locals)
 
+                # repr 显示原始数据形式
                 left_expr_value = repr(left_val)
                 right_expr_value = repr(right_val)
                 
                 left_expr_value = left_expr_value if len(left_expr_value) < 2000 else f"{left_expr_value} ..."
                 right_expr_value = right_expr_value if len(right_expr_value) < 2000 else f"{right_expr_value} ..."
 
-                compaireInfo += (f"\n 💲 {('左边','left  ')[l.n]} 🟰 {left_expr_value}")
+                compareInfo += (f"\n 💲 {('左边','left  ')[l.n]} 🟰 {left_expr_value}")
                 # print(f"💡 {op_str}")
-                compaireInfo += (f"\n 💲 {('右边','right ')[l.n]} 🟰 {right_expr_value}")
+                compareInfo += (f"\n 💲 {('右边','right ')[l.n]} 🟰 {right_expr_value}")
 
         else:
             print(("⚠️  无法获取 CHECK_POINT condition 参数", "⚠️  Could not identify the condition parameter of CHECK_POINT. ")[l.n])
 
     except Exception as e:
         print(f"  (Could not introspect expression: {e})")
+    
+    # 删除帧引用，避免内存泄漏
     finally:
         if 'caller_frame' in locals():
             del caller_frame
 
 
-    signal.checkpoint_fail(desc, compaireInfo)
+    signal.checkpoint_fail(desc, compareInfo)
 
     # 如果需要截屏
     if failLogScreenWebDriver is not None:
@@ -176,6 +226,7 @@ def CHECK_POINT(desc:str, condition, failStop=True, failLogScreenWebDriver = Non
     # 如果失败停止，中止此测试用例
     if failStop:
         raise CheckPointFail()
+
 
 def LOG_IMG(imgPath: str, width: str = None):
     """
@@ -203,5 +254,7 @@ def SELENIUM_LOG_SCREEN(driver, width: str = None):
     filename = datetime.now().strftime('%Y%m%d%H%M%S%f')
     filepath = f'log/imgs/{filename}.png'
     filepath_relative_to_log = f'imgs/{filename}.png'
+
+    # 保存截图到指定路径
     driver.get_screenshot_as_file(filepath)
     signal.log_img(filepath_relative_to_log, width)
