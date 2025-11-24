@@ -1,4 +1,5 @@
 from .run import *
+# 只执行顶层代码，变量定义、函数类定义，不执行run()函数
 
 exit(run())
 

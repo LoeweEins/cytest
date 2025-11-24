@@ -248,7 +248,7 @@ def run() :
                '\n\n!! Collect Test Cases Exception Aborted !!\n\n')[l.n])
         exit(3)
 
-
+ 
     
     # 0 表示执行成功 , 1 表示有错误 ， 2 表示没有可以执行的用例
     result =  Runner.run()
@@ -270,6 +270,7 @@ def run() :
 
     return result
 
-
+# 直接运行 cytest/run.py 时，__name__才是 '__main__'
+# 不然的话，__name__ 是 cytest.run
 if __name__ == '__main__':
     exit(run())
