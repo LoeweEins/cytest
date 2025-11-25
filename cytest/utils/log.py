@@ -282,3 +282,122 @@ class ConsoleLogger:
             print(f'{msg}', style='green')
 
 
+class TextLogger:
+
+    def test_start(self,_title=''):
+        startTime = time.strftime('%Y%m%d_%H%M%S',
+                                           time.localtime(stats.start_time))
+
+        logger.info(f'\n\n  ========= {("测试开始","Test Start")[l.n]} : {startTime} =========\n')
+
+
+    def test_end(self, runner):
+        endTime = time.strftime('%Y%m%d_%H%M%S',
+                                  time.localtime(stats.end_time))
+        logger.info(f'\n\n  ========= {("测试结束","Test End")[l.n]} : {endTime} =========\n')
+
+        logger.info(f"\n  {('耗时','Duration Of Testing ')[l.n]}    : {(stats.end_time-stats.start_time):.3f} 秒\n")
+        ret = stats.result
+
+        logger.info(f"\n  {('预备执行用例数量','number of cases plan to run')[l.n]} : {ret['case_count_to_run']}")
+        logger.info(f"\n  {('实际执行用例数量','number of cases actually run')[l.n]} : {ret['case_count']}")
+        logger.info(f"\n  {('通过','passed')[l.n]} : {ret['case_pass']}")
+        logger.info(f"\n  {('失败','failed')[l.n]} : {ret['case_fail']}")
+        logger.info(f"\n  {('异常','exception aborted')[l.n]} : {ret['case_abort']}")
+        logger.info(f"\n  {('套件初始化失败','suite setup failed')[l.n]} : {ret['suite_setup_fail']}")
+        logger.info(f"\n  {('套件清除  失败','suite teardown failed')[l.n]} : {ret['suite_teardown_fail']}")
+        logger.info(f"\n  {('用例初始化失败','cases setup failed')[l.n]} : {ret['case_setup_fail']}")
+        logger.info(f"\n  {('用例清除  失败','cases teardown failed')[l.n]} : {ret['case_teardown_fail']}")
+    
+    def enter_suite(self,name,suitetype): 
+        logger.info(f'\n\n>>> {name}')
+
+    
+    def enter_case(self, caseId ,name , case_className):
+        curTime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        logger.info(f'\n* {name}  -  {curTime}')
+
+    
+    def case_steps(self,name):  
+        logger.info(f'\n  [ case execution steps ]')
+
+    
+    # def case_pass(self, case, caseId, name):
+    #     logger.info('  PASS ')
+
+    
+    # def case_fail(self, case, caseId, name, e, stacktrace):
+    #     logger.info(f'  FAIL   {e} \n{stacktrace}')
+        
+    
+    # def case_abort(self, case, caseId, name, e, stacktrace):
+    #     logger.info(f'  ABORT   {e} \n{stacktrace}')
+
+
+    def case_result(self,case):
+        if case.execRet == 'pass':
+            logger.info('  PASS ')
+        else:
+            if case.execRet == 'fail':   
+                # 这里输出了详细的 stacktrace 信息，但是console里只输出了 error 信息                 
+                logger.info(f'  FAIL\n\n{case.stacktrace}')
+
+
+            elif case.execRet == 'abort':
+                logger.info(f'  ABORT\n\n{case.stacktrace}')
+
+
+
+    
+    def setup_begin(self,name, utype): 
+        logger.info(f'\n[ {utype} setup ] {name}')
+    
+    
+    def teardown_begin(self,name, utype): 
+        logger.info(f'\n[ {utype} teardown ] {name}')
+
+    
+    def setup_fail(self,name, utype, e, stacktrace):  
+        logger.info(f'{utype} setup fail | {e} \n{stacktrace}')
+
+    
+    def teardown_fail(self,name, utype, e, stacktrace):  
+        logger.info(f'{utype} teardown fail | {e} \n{stacktrace}')
+
+    
+    def info(self, msg):
+        if LogLevel.level >= 3:
+            logger.info(f'{msg}')
+
+    def debug(self, msg): 
+        if LogLevel.level >= 4:
+            logger.info(f'{msg}')
+
+    def error(self,msg):
+        if LogLevel.level >= 1:
+            logger.info(f'{msg}')
+
+
+    def critical(self,msg):
+        if LogLevel.level >= 0:
+            logger.info(f'{msg}')
+
+    def step(self,stepNo,desc):
+        logger.info((f'\n-- 第 {stepNo} 步 -- {desc} \n',
+                     f'\n-- Step #{stepNo} -- {desc} \n',
+                     )[l.n])
+
+    def checkpoint_pass(self, desc):
+        logger.info((f'\n** 检查点 **  {desc} ---->  通过\n',
+                     f'\n** checkpoint **  {desc} ---->  pass\n'
+                     )[l.n])
+        
+    def checkpoint_fail(self, desc, compaireInfo):
+        logger.info((f'\n** 检查点 **  {desc} ---->  !! 不通过!!\n',
+                     f'\n** checkpoint **  {desc} ---->  !! fail!!\n'
+                     )[l.n])
+        logger.info(compaireInfo)
+
+    # 记录图片文件路径，真正的图片保存在 html 里
+    def log_img(self,imgPath: str, width: str = None):
+        logger.info(f'picture {imgPath}')
