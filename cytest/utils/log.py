@@ -158,9 +158,127 @@ class Stats:
             self.result['case_setup_fail'] += 1 
     
     def teardown_fail(self,name, utype, e, stacktrace):  
+
         if utype.startswith('suite'):
             self.result['suite_teardown_fail'] += 1   
         else:
             self.result['case_teardown_fail'] += 1 
 
 stats = Stats()
+
+
+
+
+# 在命令行里用 rich 进行输出
+class ConsoleLogger:
+    
+    def test_end(self, runner):
+        ret = stats.result # stats的结果字典
+        print((f'\n\n  ========= 测试耗时 : {stats.test_duration:.3f} 秒 =========\n',
+               f'\n\n  ========= Duration Of Testing : {stats.test_duration:.3f} seconds =========\n')[l.n])
+
+
+        print(f"\n  {('预备执行用例数量','number of cases plan to run')[l.n]} : {ret['case_count_to_run']}")
+
+        print(f"\n  {('实际执行用例数量','number of cases actually run')[l.n]} : {ret['case_count']}")
+
+        print(f"\n  {('通过','passed')[l.n]} : {ret['case_pass']}", style='green')
+        
+        num = ret['case_fail']
+        style = 'white' if num == 0 else 'bright_red'
+        print(f"\n  {('失败','failed')[l.n]} : {num}", style=style)
+        
+        num = ret['case_abort']
+        style = 'white' if num == 0 else 'bright_red'
+        print(f"\n  {('异常','exception aborted')[l.n]} : {num}", style=style)
+        
+        num = ret['suite_setup_fail']
+        style = 'white' if num == 0 else 'bright_red'
+        print(f"\n  {('套件初始化失败','suite setup failed')[l.n]} : {num}", style=style)
+        
+        num = ret['suite_teardown_fail']
+        style = 'white' if num == 0 else 'bright_red'
+        print(f"\n  {('套件清除  失败','suite teardown failed')[l.n]} : {num}", style=style)
+        
+        num = ret['case_setup_fail']
+        style = 'white' if num == 0 else 'bright_red'
+        print(f"\n  {('用例初始化失败','cases setup failed')[l.n]} : {num}", style=style)
+        
+        num = ret['case_teardown_fail']
+        style = 'white' if num == 0 else 'bright_red'
+        print(f"\n  {('用例清除  失败','cases teardown failed')[l.n]} : {num}", style=style)
+
+        print("\n\n")
+    
+    # 只关心 file 级别，不关心 dir 级别
+    def enter_suite(self,name,suitetype):   
+        if suitetype == 'file' :
+            print(f'\n\n>>> {name}',style='bold bright_white')
+
+    
+    def enter_case(self, caseId ,name, case_className):        
+        print(f'\n* {name}',style='bright_white')
+
+    
+    def case_steps(self,name):...
+
+    
+    # def case_pass(self, case, caseId, name):
+    #     print('                          PASS',style='green')
+
+    
+    # def case_fail(self, case, caseId, name, e, stacktrace):
+    #     print(f'                          FAIL\n{e}',style='bright_red')
+        
+    
+    # def case_abort(self, case, caseId, name, e, stacktrace):
+    #     print(f'                          ABORT\n{e}',style='magenta')
+
+    # 失败和 abort 都会抛出错误信息
+    def case_result(self,case):
+        if case.execRet == 'pass':
+            print('                          PASS',style='green')
+        elif case.execRet == 'fail':
+            print(f'                          FAIL\n{case.error}',style='bright_red')
+        elif case.execRet == 'abort':
+            print(f'                          ABORT\n{case.error}',style='magenta')
+
+
+    
+    def setup_begin(self,name, utype):...
+    
+    
+    def teardown_begin(self,name, utype):...
+
+
+    # utype 可能是 suite  case  case_default
+    def setup_fail(self,name, utype, e, stacktrace): 
+        utype =  ('套件','suite')[l.n] if utype.startswith('suite') else ('用例','case')[l.n]
+        print(f"\n{utype} {('初始化失败','setup failed')[l.n]} | {name} | {e}",style='bright_red')
+        # print(f'\n{utype} setup fail | {name} | {e}',style='bright_red')
+
+    
+    def teardown_fail(self,name, utype, e, stacktrace):      
+        utype =  ('套件','suite')[l.n] if utype.startswith('suite') else ('用例','case')[l.n]
+        print(f"\n{utype} {('清除失败','teardown failed')[l.n]} | {name} | {e}", style='bright_red')
+        # print(f'\n{utype} teardown fail | {name} | {e}',style='bright_red')
+
+
+    def info(self, msg):
+        if LogLevel.level >= 3:
+            print(f'{msg}')
+
+    def debug(self, msg):
+        if LogLevel.level >= 4:
+            print(f'{msg}')
+
+    def error(self,msg):
+        if LogLevel.level >= 1:
+            print(f'{msg}', style='bright_red')
+
+
+    def critical(self,msg):
+        if LogLevel.level >= 0:
+            print(f'{msg}', style='green')
+
+
