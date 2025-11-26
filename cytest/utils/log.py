@@ -392,12 +392,262 @@ class TextLogger:
                      f'\n** checkpoint **  {desc} ---->  pass\n'
                      )[l.n])
         
-    def checkpoint_fail(self, desc, compaireInfo):
+    def checkpoint_fail(self, desc, compareInfo):
         logger.info((f'\n** 检查点 **  {desc} ---->  !! 不通过!!\n',
                      f'\n** checkpoint **  {desc} ---->  !! fail!!\n'
                      )[l.n])
-        logger.info(compaireInfo)
-
+        logger.info(compareInfo)
     # 记录图片文件路径，真正的图片保存在 html 里
     def log_img(self,imgPath: str, width: str = None):
         logger.info(f'picture {imgPath}')
+
+
+from dominate.tags import *
+from dominate.util import raw
+from dominate import document
+
+class HtmlLogger:
+
+    def __init__(self):
+        self.curEle = None
+        # 保存一个  用例文件名 -> htmlDiv对象 的表，因为执行到用例文件清除的时候，要在 用例文件Div对象里面添加 该文件teardown的子节点Div
+        self.suiteFileName2DivTable = {}
+        
+    def test_start(self,_title=''):
+        libDir = os.path.dirname(__file__)
+        # css file
+        with open(os.path.join(libDir , 'report.css'), encoding='utf8') as f:
+            _css_style = f.read()
+        # js file
+        with open(os.path.join(libDir , 'report.js'), encoding='utf8') as f:
+            _js = f.read()
+
+        # icon file
+        
+
+        self.doc = document(title= Settings.report_title)
+        self.doc.head.add(
+                        meta(charset="UTF-8"),
+                        meta(name="viewport", content="width=device-width, initial-scale=1.0"),
+                        link(rel='icon', type="image/png" , href=os.path.join(libDir, 'icon.png')),
+                        style(raw(_css_style)),
+                        script(raw(_js), type='text/javascript'))
+
+        self.main = self.doc.body.add(div(_class='main_section'))
+
+        self.main.add(h1(f'{Settings.report_title}', style='font-family: auto'))
+
+        self.main.add(h3(('统计结果','Test Statistics')[l.n]))
+
+        resultDiv = self.main.add(div(_class='result'))
+
+        self.result_table, self.result_barchart = resultDiv.add(
+            table(_class='result_table'),
+            div(_class='result_barchart')
+        )
+
+        _, self.logDiv = self.main.add(
+            div(
+                # span('切换到精简模式',_class='h3_button', id='display_mode' ,onclick="toggle_folder_all_cases()"), 
+                h3(('执行日志','Test Execution Log')[l.n],style='display:inline'),
+                style='margin-top:2em'
+            ),
+            div(_class='exec_log')
+        )
+
+        # 查看上一个和下一个错误的 
+        self.ev = div(
+                div('∧', _class = 'menu-item', onclick="previous_error()", title='上一个错误'), 
+                div('∨', _class = 'menu-item', onclick="next_error()", title='下一个错误'),
+                _class = 'error_jumper'
+            )
+
+        helpLink = ("http://www.byhy.net/tut/auto/hytest/01",'https://github.com/jcyrss/hytest/Documentation.md') [l.n]
+         
+        self.doc.body.add(div(
+            div(('页首','Home')[l.n], _class = 'menu-item',
+                onclick='document.querySelector("body").scrollIntoView()'),
+            div(('帮助','Help')[l.n], _class = 'menu-item', 
+                onclick=f'window.open("{helpLink}", "_blank"); '),
+            div(('Summary','Summary')[l.n],_class='menu-item', id='display_mode' ,onclick="toggle_folder_all_cases()"),
+            self.ev,
+            id='float_menu')
+        )
+
+        self.curEle = self.main  # 记录当前所在的 html element
+        self.curSuiteEle = None   # 记录当前的套件元素
+        self.curCaseEle = None   # 记录当前的用例元素
+        self.curCaseLableEle = None   # 记录当前的用例里面的 种类标题元素
+        self.curSetupEle = None   # 记录当前的初始化元素
+        self.curTeardownEle = None   # 记录当前的清除元素
+        self.suitepath2element = {}
+
+
+    
+    def test_end(self, runner):
+
+        execStartTime = time.strftime('%Y/%m/%d %H:%M:%S',
+                                           time.localtime(stats.start_time))
+        execEndTime = time.strftime('%Y/%m/%d %H:%M:%S',
+                                           time.localtime(stats.end_time))
+
+        ret = stats.result
+
+        errorNum = 0
+
+        trs = []        
+        
+        trs.append(tr(td(('hytest 版本','hytest version')[l.n]), td(version)))
+        trs.append(tr(td(('开始时间','Test Start Time')[l.n]), td(f'{execStartTime}')))
+        trs.append(tr(td(('结束时间','Test End Time')[l.n]), td(f'{execEndTime}')))
+
+        trs.append(tr(td(('耗时','Duration Of Testing')[l.n]), td(f'{stats.test_duration:.3f}' + (' 秒',' Seconds')[l.n])))
+
+        trs.append(tr(td(('预备执行用例数量','number of cases plan to run')[l.n]), td(f"{ret['case_count_to_run']}")))
+        trs.append(tr(td(('实际执用例行数量','number of cases actually run')[l.n]), td(f"{ret['case_count']}")))
+
+        trs.append(tr(td(('通过','passed')[l.n]), td(f"{ret['case_pass']}")))
+
+
+        case_count_to_run = ret['case_count_to_run']
+
+        num = ret['case_fail']
+        style = '' if num == 0 else 'color:red'
+        trs.append(tr(td(('失败','failed')[l.n]), td(f"{num}", style=style)))
+        errorNum += num
+        
+        num = ret['case_abort']
+        style = '' if num == 0 else 'color:red'
+        trs.append(tr(td(('异常','exception aborted')[l.n]), td(f"{num}", style=style)))
+        errorNum += num
+
+        # 计算阻塞用例个数
+        blocked_num = case_count_to_run - ret['case_pass'] - ret['case_fail'] - ret['case_abort']
+        style = '' if blocked_num == 0 else 'color:red'
+        trs.append(tr(td(('阻塞','blocked')[l.n]), td(f"{blocked_num}", style=style)))
+        
+        num = ret['suite_setup_fail']
+        style = '' if num == 0 else 'color:red'
+        trs.append(tr(td(('套件初始化失败','suite setup failed')[l.n]), td(f"{num}", style=style)))
+        errorNum += num
+        
+        num = ret['suite_teardown_fail']
+        style = '' if num == 0 else 'color:red'
+        trs.append(tr(td(('套件清除  失败','suite teardown failed')[l.n]), td(f"{num}", style=style)))
+        errorNum += num
+        
+        num = ret['case_setup_fail']
+        style = '' if num == 0 else 'color:red'
+        trs.append(tr(td(('用例初始化失败','cases setup failed')[l.n]), td(f"{num}", style=style)))
+        errorNum += num
+        
+        num = ret['case_teardown_fail']
+        style = '' if num == 0 else 'color:red'
+        trs.append(tr(td(('用例清除  失败','cases teardown failed')[l.n]), td(f"{num}", style=style)))
+        errorNum += num
+
+        self.ev['display'] = 'none' if errorNum==0 else 'block'
+
+        # 添加结果统计表
+        self.result_table.add(tbody(*trs))
+
+        # 添加 结果柱状图
+
+        def add_barchar_item(statName, percent, color):
+            if type(percent) == str:
+                barPercentStr = percent
+                percentStr ='-'
+
+            else:
+                # 小于 1% 的， 都显示 1% 长度，否则就看不见了
+                barPercent = 1 if 0 < percent <= 1 else percent
+
+                barPercentStr = f'{barPercent}%'
+                percentStr = f'{percent}%'
+
+            self.result_barchart.add(
+                div(
+                    span(statName),
+                    div(
+                        div(
+                            "" , # 柱状里面不填写内容了，如果值为1.86%,背景色部分太短，由于颜色是白色，溢出到右边的空白背景，看不清
+                            style=f'width: {barPercentStr}; background-color: {color};',
+                            _class="barchart_bar",
+                        ),
+                        _class="barchart_barbox"
+                    ),
+                    _class="barchar_item"
+                )
+            )
+
+        # add_barchar_item(
+        #     f"用例总数 ： {ret['case_count']} 个",
+        #     100,
+        #     '#2196f3')
+
+
+        def percentCalc(upper,lower):
+            percent = str(round(upper * 100 / lower, 1))
+            percent = percent[:-2] if percent.endswith('.0') else percent
+            return percent
+
+        percent = percentCalc(ret['case_pass'], case_count_to_run)
+        add_barchar_item(
+            f"{('用例通过','cases passed')[l.n]} {percent}% ： {ret['case_pass']} {('个','')[l.n]}",
+            float(percent),
+            '#04AA6D')
+
+        percent = percentCalc(ret['case_fail'], case_count_to_run)
+        add_barchar_item(
+            f"{('用例失败','cases failed')[l.n]} {percent}% ： {ret['case_fail']} {('个','')[l.n]}",
+            float(percent),
+            '#bb4069')
+
+        percent = percentCalc(ret['case_abort'], case_count_to_run)
+        add_barchar_item(
+            f"{('用例异常','cases exception aborted')[l.n]} {percent}% ： {ret['case_abort']} {('个','')[l.n]}",
+            float(percent),
+            '#9c27b0')
+
+
+        percent = percentCalc(blocked_num, case_count_to_run)
+        add_barchar_item(
+            f"{('用例阻塞','cases blocked')[l.n]} {percent}% ： {blocked_num} {('个','')[l.n]}",
+            float(percent),
+            '#dcbdbd')
+
+        # st_fail = ret['suite_setup_fail'] + ret['case_setup_fail'] + ret['suite_teardown_fail'] + ret['case_teardown_fail']
+        # percent = '100%' if st_fail > 0 else '0%'
+        # add_barchar_item(
+        #     f"初始化/清除 失败  {st_fail} 次",
+        #     percent,
+        #     '#dcbdbd')
+
+
+        # 产生文件
+        htmlcontent = self.doc.render()
+
+        timestamp = time.strftime('%Y%m%d_%H%M%S',time.localtime(stats.start_time))
+        fileName = f'report_{timestamp}.html'
+        reportPath = os.path.join('log',fileName)
+        with open(reportPath,'w',encoding='utf8') as f:
+            f.write(htmlcontent)
+
+        if Settings.auto_open_report:
+            try:
+                my_os = platform.system().lower()
+                if my_os == 'windows':
+                    os.startfile(reportPath)
+                elif my_os == 'darwin': # macOS
+                    os.system(f'open {reportPath}')
+            except:
+                print(traceback.format_exc())
+
+        #  with command line parameter report_url_prefix
+        #  need to copy report from dir 'log' to 'reports'
+        if Settings.report_url_prefix:
+            os.makedirs('reports', exist_ok=True)
+            cpTargetPath = os.path.join('reports',fileName)
+            shutil.copyfile(reportPath, cpTargetPath)
+            o1 = ('测试报告','test report')[l.n]
+            print(f"{o1} : {Settings.report_url_prefix}/{fileName} \n")
