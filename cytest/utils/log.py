@@ -715,21 +715,22 @@ class HtmlLogger:
         self.suitepath2element[name] = self.curEle
              
     
+    # 进入case时创建大的 case 元素，包含 label、name、time、duration、body
+    # 其中 body 是单独的一个 div，可以折叠隐藏
     def enter_case(self, caseId ,name, case_className):       
-        # 执行有结果后，要修改这个 self.curCaseLableEle ，比如 加上 PASS
-        self.curCaseLableEle = span(('用例','Case')[l.n],_class='label caselabel')
-
-        # folder_body 是折叠区 内容部分，可以隐藏
+        
+        # 执行有结果后，要修改这个 self.curCaseLabelEle ，比如 追加 PASS
+        self.curCaseLabelEle = span(('用例','Case')[l.n],_class='label caselabel')
+        self.caseDurationSpan = span("", _class='duration')
         self.curCaseBodyEle = div(
             span(f'{self.curSuiteFilePath}::{case_className}', _class='case_class_path') , 
-            _class='folder_body')
-        
-        self.caseDurationSpan = span("", _class='duration')
+            _class='folder_body') # folder_body 是折叠区 内容部分，可以隐藏
+            # 并且这个CaseBody里面还会添加 setup、teardown、steps 等元素
 
         self.curCaseEle = self.curSuiteEle.add(
             div(
                 div(
-                    self.curCaseLableEle,
+                    self.curCaseLabelEle,
                     span(name, _class='casename'),
                     span(datetime.now().strftime('%m-%d %H:%M:%S'), _class='executetime'),
                     self.caseDurationSpan,
@@ -741,30 +742,35 @@ class HtmlLogger:
         )
         self.curEle = self.curCaseBodyEle
 
+
+    # 离开case时加上时间
     def leave_case(self, caseId, duration):
         self.caseDurationSpan += f"{round(duration,1)}s"
     
-    def case_steps(self,name):          
+
+    # 用例步骤开始，加在 CaseBody 里面
+    # 这是一个 label 级别的元素
+    def case_steps(self,name):
         self.stepsDurationSpan = span("", _class='duration')
         ele = div(
                 div(
-                    span(('测试步骤','Test Steps')[l.n],_class='label'),
+                    span(('测试步骤','Test Steps')[l.n], _class='label'),
                     self.stepsDurationSpan,
                     _class="flow-space-between",
-                ),            
-            _class='test_steps',id='test_steps '+name)    
+                ),
+            _class='test_steps', id='test_steps ' + name)
         
         self.curEle = self.curCaseBodyEle.add(ele)
 
     
     # def case_pass(self, case, caseId, name): 
     #     self.curCaseEle['class'] += ' pass'
-    #     self.curCaseLableEle += ' PASS'
+    #     self.curCaseLabelEle += ' PASS'
     
     # def case_fail(self, case, caseId, name, e, stacktrace):
         
     #     self.curCaseEle['class'] += ' fail'
-    #     self.curCaseLableEle += ' FAIL'
+    #     self.curCaseLabelEle += ' FAIL'
 
     #     self.curEle += div(f'{e} \n{stacktrace}', _class='info error-info')
         
@@ -772,7 +778,7 @@ class HtmlLogger:
     # def case_abort(self, case, caseId, name, e, stacktrace):
         
     #     self.curCaseEle['class'] += ' abort'
-    #     self.curCaseLableEle += ' ABORT'
+    #     self.curCaseLabelEle += ' ABORT'
 
     #     self.curEle += div(f'{e} \n{stacktrace}', _class='info error-info')
 
@@ -780,23 +786,22 @@ class HtmlLogger:
     def case_result(self, case):
         if case.execRet == 'pass':
             self.curCaseEle['class'] += ' pass'
-            self.curCaseLableEle += ' ✅'
+            self.curCaseLabelEle += ' ✅'
 
         elif case.execRet == 'fail':
             self.curCaseEle['class'] += ' fail'
-            self.curCaseLableEle += ' ❌'
+            self.curCaseLabelEle += ' ❌'
             self.curEle += div(f'{case.stacktrace}', _class='info error-info')
             
         elif case.execRet == 'abort':                
             self.curCaseEle['class'] += ' abort'
-            self.curCaseLableEle += ' 🚫'
-
+            self.curCaseLabelEle += ' 🚫'
             self.curEle += div(f'{case.stacktrace}', _class='info abort-info')
 
         self.stepsDurationSpan += f"{round(case._steps_duration,1)}s"
             
     # utype 可能是 suite  case  case_default
-    def setup_begin(self,name, utype): 
+    def setup_begin(self, name, utype):
         
         _class = f'{utype}_setup setup'
 
@@ -810,6 +815,7 @@ class HtmlLogger:
                 span(('套件初始化','Suite Setup')[l.n],_class='label'),
                 span(''),  #span(name),
                 span(datetime.now().strftime('%m-%d %H:%M:%S'), _class='executetime'),
+
                 self.setupDurationSpan,
                 _class='folder_header')
             
@@ -835,10 +841,10 @@ class HtmlLogger:
                     _class="flow-space-between",
                 ),
                 _class=_class,
-                id=f'{_class} {name}')   
+                id=f'{_class} {name}')
 
             self.curCaseBodyEle.add(self.curSetupEle)
-            self.curEle['class'] += ' case_st_lable'
+            self.curEle['class'] += ' case_st_label'
     
             
     # utype 可能是 suite  case  case_default
@@ -901,7 +907,68 @@ class HtmlLogger:
                     _class="flow-space-between",
                 ),
                 _class=_class,
-                id=f'{_class} {name}')       
+                id=f'{_class} {name}')
 
             self.curCaseBodyEle.add(self.curTeardownEle)
-            self.curEle['class'] += ' case_st_lable'
+            self.curEle['class'] += ' case_st_label'
+
+
+    # utype 可能是 suite  case  case_default
+    def teardown_end(self, name, utype, duration): 
+        self.teardownDurationSpan += f"{round(duration,1)}s"
+
+    
+    def setup_fail(self,name, utype, e, stacktrace):  
+        self.curSetupEle['class'] += ' fail'
+        self.curEle += div(f'{utype} setup fail | {e} \n{stacktrace}', _class='info error-info')
+    
+    def teardown_fail(self,name, utype, e, stacktrace):           
+        self.curTeardownEle['class'] += ' fail'
+        self.curEle += div(f'{utype} teardown fail | {e} \n{stacktrace}', _class='info error-info')
+
+    def info(self, msg):
+        msg = f'{msg}'
+        if self.curEle is None:
+            return
+
+        self.curEle += div(msg, _class='info')
+
+
+    def step(self,stepNo,desc):
+        if self.curEle is None:
+            return
+
+        self.curEle += div(span(f'{("步骤","Step")[l.n]} #{stepNo}', _class='tag'), span(desc), _class='case_step')
+
+    def checkpoint_pass(self, desc):
+        if self.curEle is None:
+            return
+
+        self.curEle += div(span(f'{("检查点","CheckPoint")[l.n]} ✅', _class='tag'), 
+                           span(desc, _class='paragraph' ), 
+                           _class='checkpoint_pass')
+        
+    def checkpoint_fail(self, desc, compareInfo):
+        if self.curEle is None:
+            return
+
+        self.curEle += div(span(f'{("检查点","CheckPoint")[l.n]} ❌', _class='tag'), 
+                           span(f"{desc}\n\n{compareInfo}" , _class='paragraph' ), 
+                           _class='checkpoint_fail')
+
+
+    def log_img(self,imgPath: str, width: str = None):
+        if self.curEle is None:
+            return
+
+        self.curEle += div(img(src=imgPath, width= '50%' if width is None else width, _class='screenshot' ))
+
+
+
+from .signal import signal
+
+signal.register([
+    stats,
+    ConsoleLogger(), 
+    TextLogger(), 
+    HtmlLogger()])
