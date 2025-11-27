@@ -403,49 +403,65 @@ class TextLogger:
 
 
 from dominate.tags import *
+# html 的标签，如 div、span、h1、table、tr、td
+
 from dominate.util import raw
+# 嵌入原始的 css 和 js 代码
+
 from dominate import document
+# 创建 html 文档
 
 class HtmlLogger:
 
     def __init__(self):
-        self.curEle = None
+        self.curEle = None # 执行到哪个元素
+
+    
         # 保存一个  用例文件名 -> htmlDiv对象 的表，因为执行到用例文件清除的时候，要在 用例文件Div对象里面添加 该文件teardown的子节点Div
+        # 用例文件名 对应 div 对象的映射表
         self.suiteFileName2DivTable = {}
         
-    def test_start(self,_title=''):
-        libDir = os.path.dirname(__file__)
-        # css file
-        with open(os.path.join(libDir , 'report.css'), encoding='utf8') as f:
-            _css_style = f.read()
-        # js file
-        with open(os.path.join(libDir , 'report.js'), encoding='utf8') as f:
-            _js = f.read()
 
-        # icon file
+    # 开始构建 html 
+    def test_start(self,_title=''):
+
+        # 设置路径为 log.py 所在目录
+        libDir = os.path.dirname(__file__)
+        
+        with open(os.path.join(libDir , 'report.css'), encoding='utf8') as f:
+            _css_style = f.read() # os.path.join() 用来拼接路径
+      
+        with open(os.path.join(libDir , 'report.js'), encoding='utf8') as f:
+            _js = f.read()   # js file
+
         
 
         self.doc = document(title= Settings.report_title)
         self.doc.head.add(
-                        meta(charset="UTF-8"),
+                        meta(charset="UTF-8"), # 两个 meta，元信息
                         meta(name="viewport", content="width=device-width, initial-scale=1.0"),
+                        
+                        
                         link(rel='icon', type="image/png" , href=os.path.join(libDir, 'icon.png')),
+                        
                         style(raw(_css_style)),
-                        script(raw(_js), type='text/javascript'))
+                        script(raw(_js), type='text/javascript')
+                        )
 
-        self.main = self.doc.body.add(div(_class='main_section'))
+        self.main = self.doc.body.add(div(_class='main_section')) # 主容器
 
         self.main.add(h1(f'{Settings.report_title}', style='font-family: auto'))
 
-        self.main.add(h3(('统计结果','Test Statistics')[l.n]))
+        self.main.add(h3(('统计结果','Test Statistics')[l.n])) 
 
-        resultDiv = self.main.add(div(_class='result'))
+        resultDiv = self.main.add(div(_class='result')) # 主容器内
 
         self.result_table, self.result_barchart = resultDiv.add(
             table(_class='result_table'),
             div(_class='result_barchart')
-        )
+        ) # 在 result 容器内加 table 和 柱状图 div
 
+        
         _, self.logDiv = self.main.add(
             div(
                 # span('切换到精简模式',_class='h3_button', id='display_mode' ,onclick="toggle_folder_all_cases()"), 
@@ -455,29 +471,35 @@ class HtmlLogger:
             div(_class='exec_log')
         )
 
+
         # 查看上一个和下一个错误的 
+        # 没有在main里面，因为 main 是滚动区域
         self.ev = div(
                 div('∧', _class = 'menu-item', onclick="previous_error()", title='上一个错误'), 
                 div('∨', _class = 'menu-item', onclick="next_error()", title='下一个错误'),
                 _class = 'error_jumper'
             )
 
-        helpLink = ("http://www.byhy.net/tut/auto/hytest/01",'https://github.com/jcyrss/hytest/Documentation.md') [l.n]
+        helpLink = ('https://github.com//LoeweEins/cytest/Documentation.md')
          
+        # 加了一个 悬浮 div
         self.doc.body.add(div(
             div(('页首','Home')[l.n], _class = 'menu-item',
                 onclick='document.querySelector("body").scrollIntoView()'),
+
             div(('帮助','Help')[l.n], _class = 'menu-item', 
                 onclick=f'window.open("{helpLink}", "_blank"); '),
+
             div(('Summary','Summary')[l.n],_class='menu-item', id='display_mode' ,onclick="toggle_folder_all_cases()"),
             self.ev,
             id='float_menu')
         )
 
+        # 初始化一些指针
         self.curEle = self.main  # 记录当前所在的 html element
         self.curSuiteEle = None   # 记录当前的套件元素
         self.curCaseEle = None   # 记录当前的用例元素
-        self.curCaseLableEle = None   # 记录当前的用例里面的 种类标题元素
+        self.curCaseLabelEle = None   # 记录当前的用例里面的 种类标题元素
         self.curSetupEle = None   # 记录当前的初始化元素
         self.curTeardownEle = None   # 记录当前的清除元素
         self.suitepath2element = {}
@@ -495,9 +517,9 @@ class HtmlLogger:
 
         errorNum = 0
 
-        trs = []        
+        trs = [] # table rows 列表  
         
-        trs.append(tr(td(('hytest 版本','hytest version')[l.n]), td(version)))
+        trs.append(tr(td(('cytest 版本','cytest version')[l.n]), td(version)))
         trs.append(tr(td(('开始时间','Test Start Time')[l.n]), td(f'{execStartTime}')))
         trs.append(tr(td(('结束时间','Test End Time')[l.n]), td(f'{execEndTime}')))
 
@@ -511,11 +533,13 @@ class HtmlLogger:
 
         case_count_to_run = ret['case_count_to_run']
 
+        # 计算失败用例个数
         num = ret['case_fail']
         style = '' if num == 0 else 'color:red'
         trs.append(tr(td(('失败','failed')[l.n]), td(f"{num}", style=style)))
         errorNum += num
         
+        # 计算异常用例个数
         num = ret['case_abort']
         style = '' if num == 0 else 'color:red'
         trs.append(tr(td(('异常','exception aborted')[l.n]), td(f"{num}", style=style)))
@@ -526,33 +550,41 @@ class HtmlLogger:
         style = '' if blocked_num == 0 else 'color:red'
         trs.append(tr(td(('阻塞','blocked')[l.n]), td(f"{blocked_num}", style=style)))
         
+        # 计算suite初始化失败次数
         num = ret['suite_setup_fail']
         style = '' if num == 0 else 'color:red'
         trs.append(tr(td(('套件初始化失败','suite setup failed')[l.n]), td(f"{num}", style=style)))
         errorNum += num
         
+        # 计算suite清除失败次数
         num = ret['suite_teardown_fail']
         style = '' if num == 0 else 'color:red'
         trs.append(tr(td(('套件清除  失败','suite teardown failed')[l.n]), td(f"{num}", style=style)))
         errorNum += num
         
+        # 计算case初始化失败次数
         num = ret['case_setup_fail']
         style = '' if num == 0 else 'color:red'
         trs.append(tr(td(('用例初始化失败','cases setup failed')[l.n]), td(f"{num}", style=style)))
         errorNum += num
         
+        # 计算case清除失败次数
         num = ret['case_teardown_fail']
         style = '' if num == 0 else 'color:red'
         trs.append(tr(td(('用例清除  失败','cases teardown failed')[l.n]), td(f"{num}", style=style)))
         errorNum += num
 
+
+        # 没有error，隐藏错误跳转
         self.ev['display'] = 'none' if errorNum==0 else 'block'
 
         # 添加结果统计表
+        # tbody 用于包裹 tr 列表
         self.result_table.add(tbody(*trs))
 
-        # 添加 结果柱状图
 
+
+        # 添加 结果柱状图
         def add_barchar_item(statName, percent, color):
             if type(percent) == str:
                 barPercentStr = percent
@@ -586,8 +618,10 @@ class HtmlLogger:
         #     '#2196f3')
 
 
-        def percentCalc(upper,lower):
-            percent = str(round(upper * 100 / lower, 1))
+
+        # 计算比例
+        def percentCalc(upper: int, lower: int) -> str:
+            percent = str(round(upper * 100 / lower, 1)) # 取一位小数 + '%'
             percent = percent[:-2] if percent.endswith('.0') else percent
             return percent
 
@@ -624,14 +658,16 @@ class HtmlLogger:
         #     '#dcbdbd')
 
 
-        # 产生文件
+        # 生成 html
         htmlcontent = self.doc.render()
 
+        # 用时间戳命名 html 报告文件
         timestamp = time.strftime('%Y%m%d_%H%M%S',time.localtime(stats.start_time))
         fileName = f'report_{timestamp}.html'
         reportPath = os.path.join('log',fileName)
         with open(reportPath,'w',encoding='utf8') as f:
             f.write(htmlcontent)
+
 
         if Settings.auto_open_report:
             try:
@@ -645,9 +681,227 @@ class HtmlLogger:
 
         #  with command line parameter report_url_prefix
         #  need to copy report from dir 'log' to 'reports'
+        # 服务器运行，通过 report_url_prefix 指定 URL 前缀
         if Settings.report_url_prefix:
             os.makedirs('reports', exist_ok=True)
             cpTargetPath = os.path.join('reports',fileName)
             shutil.copyfile(reportPath, cpTargetPath)
             o1 = ('测试报告','test report')[l.n]
             print(f"{o1} : {Settings.report_url_prefix}/{fileName} \n")
+
+
+
+
+    # 进入用例目录 或者 用例文件
+    def enter_suite(self,name: str,suitetype: str): 
+        _class = 'suite_' + suitetype # 有 dir  file 两种类型
+
+        enterInfo = ('进入目录','Enter Folder')[l.n] if suitetype == 'dir' \
+                else ('进入文件','Enter File')[l.n]
+        
+        self.curEle = self.logDiv.add(
+            div(                
+                div(
+                    span(enterInfo,_class='label'),
+                    span(name),
+                    _class='enter_suite'
+                ),         
+                _class=_class, id=f'{_class} {name}'
+            )
+        )
+        self.curSuiteEle = self.curEle
+        self.curSuiteFilePath = name
+
+        self.suitepath2element[name] = self.curEle
+             
+    
+    def enter_case(self, caseId ,name, case_className):       
+        # 执行有结果后，要修改这个 self.curCaseLableEle ，比如 加上 PASS
+        self.curCaseLableEle = span(('用例','Case')[l.n],_class='label caselabel')
+
+        # folder_body 是折叠区 内容部分，可以隐藏
+        self.curCaseBodyEle = div(
+            span(f'{self.curSuiteFilePath}::{case_className}', _class='case_class_path') , 
+            _class='folder_body')
+        
+        self.caseDurationSpan = span("", _class='duration')
+
+        self.curCaseEle = self.curSuiteEle.add(
+            div(
+                div(
+                    self.curCaseLableEle,
+                    span(name, _class='casename'),
+                    span(datetime.now().strftime('%m-%d %H:%M:%S'), _class='executetime'),
+                    self.caseDurationSpan,
+                    _class='folder_header'
+                ),
+                self.curCaseBodyEle ,
+                _class='case',id=f'case_{caseId:08}'
+               )
+        )
+        self.curEle = self.curCaseBodyEle
+
+    def leave_case(self, caseId, duration):
+        self.caseDurationSpan += f"{round(duration,1)}s"
+    
+    def case_steps(self,name):          
+        self.stepsDurationSpan = span("", _class='duration')
+        ele = div(
+                div(
+                    span(('测试步骤','Test Steps')[l.n],_class='label'),
+                    self.stepsDurationSpan,
+                    _class="flow-space-between",
+                ),            
+            _class='test_steps',id='test_steps '+name)    
+        
+        self.curEle = self.curCaseBodyEle.add(ele)
+
+    
+    # def case_pass(self, case, caseId, name): 
+    #     self.curCaseEle['class'] += ' pass'
+    #     self.curCaseLableEle += ' PASS'
+    
+    # def case_fail(self, case, caseId, name, e, stacktrace):
+        
+    #     self.curCaseEle['class'] += ' fail'
+    #     self.curCaseLableEle += ' FAIL'
+
+    #     self.curEle += div(f'{e} \n{stacktrace}', _class='info error-info')
+        
+    
+    # def case_abort(self, case, caseId, name, e, stacktrace):
+        
+    #     self.curCaseEle['class'] += ' abort'
+    #     self.curCaseLableEle += ' ABORT'
+
+    #     self.curEle += div(f'{e} \n{stacktrace}', _class='info error-info')
+
+
+    def case_result(self, case):
+        if case.execRet == 'pass':
+            self.curCaseEle['class'] += ' pass'
+            self.curCaseLableEle += ' ✅'
+
+        elif case.execRet == 'fail':
+            self.curCaseEle['class'] += ' fail'
+            self.curCaseLableEle += ' ❌'
+            self.curEle += div(f'{case.stacktrace}', _class='info error-info')
+            
+        elif case.execRet == 'abort':                
+            self.curCaseEle['class'] += ' abort'
+            self.curCaseLableEle += ' 🚫'
+
+            self.curEle += div(f'{case.stacktrace}', _class='info abort-info')
+
+        self.stepsDurationSpan += f"{round(case._steps_duration,1)}s"
+            
+    # utype 可能是 suite  case  case_default
+    def setup_begin(self,name, utype): 
+        
+        _class = f'{utype}_setup setup'
+
+        self.setupDurationSpan = span("", _class='duration')
+                     
+        # 套件 setup
+        if utype.startswith('suite_'):
+            
+            # folder_body 是折叠区 内容部分，可以隐藏
+            suiteHeaderEle = div(
+                span(('套件初始化','Suite Setup')[l.n],_class='label'),
+                span(''),  #span(name),
+                span(datetime.now().strftime('%m-%d %H:%M:%S'), _class='executetime'),
+                self.setupDurationSpan,
+                _class='folder_header')
+            
+            self.curSuiteHeaderEle = suiteHeaderEle
+            
+            stBodyEle = self.curEle = div(_class='folder_body')
+            
+            self.curSetupEle = div(
+                suiteHeaderEle,
+                stBodyEle,
+                _class=_class,
+                id=f'{_class} {name}')   
+
+            self.curSuiteEle.add(self.curSetupEle)  
+
+        # 用例 setup
+        else:
+            
+            self.curSetupEle = self.curEle = div(
+                div(
+                    span(('用例初始化','Case Setup')[l.n],_class='label'),
+                    self.setupDurationSpan,
+                    _class="flow-space-between",
+                ),
+                _class=_class,
+                id=f'{_class} {name}')   
+
+            self.curCaseBodyEle.add(self.curSetupEle)
+            self.curEle['class'] += ' case_st_lable'
+    
+            
+    # utype 可能是 suite  case  case_default
+    def setup_end(self, name, utype, duration): 
+
+        self.setupDurationSpan += f"{round(duration,1)}s"
+
+
+
+        
+    # utype 可能是 suite  case  case_default
+    def teardown_begin(self,name, utype): 
+
+        _class = f'{utype}_teardown teardown'
+
+        self.teardownDurationSpan = span("", _class='duration')
+
+        # 套件 teardown
+        if utype.startswith('suite_'):    
+
+            # 是套件目录的清除，创建新的 curSuiteEle
+            if utype == 'suite_dir':
+                        
+                self.curEle = self.logDiv.add(
+                    div(                
+                        div(
+                            span(('离开目录','Leave Folder')[l.n] ,_class='label'),
+                            span(name),
+                            _class='leave_suite'
+                        ),         
+                        _class="suite_dir", id=f'{_class} {name}'
+                    )
+                )
+                self.curSuiteEle = self.curEle
+            
+            # folder_body 是折叠区 内容部分，可以隐藏
+            suiteHeaderEle = div(
+                span(('套件清除','Suite Teardown')[l.n],_class='label'),
+                span(''),  #span(name),
+                span(datetime.now().strftime('%m-%d %H:%M:%S'), _class='executetime'),
+                self.teardownDurationSpan,
+                _class='folder_header')
+            
+            stBodyEle = self.curEle = div(_class='folder_body')
+            
+            self.curTeardownEle = div(
+                suiteHeaderEle,
+                stBodyEle,
+                _class=_class,
+                id=f'{_class} {name}')   
+
+            self.curSuiteEle.add(self.curTeardownEle)
+
+        # 用例 teardown
+        else:            
+            self.curTeardownEle = self.curEle = div(                
+                div(
+                    span(('用例清除','Case Teardown')[l.n],_class='label'),
+                    self.teardownDurationSpan,
+                    _class="flow-space-between",
+                ),
+                _class=_class,
+                id=f'{_class} {name}')       
+
+            self.curCaseBodyEle.add(self.curTeardownEle)
+            self.curEle['class'] += ' case_st_lable'
