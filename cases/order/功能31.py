@@ -1,5 +1,5 @@
 from lib.share import  gs
-from hytest import GSTORE
+from cytest import GSTORE
 def add_order(name):
     return {
             'ret': 0,
