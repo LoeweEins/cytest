@@ -54,3 +54,4 @@ class Settings:
     auto_open_report = True
     report_title = '' # 命令行参数会设置,并且有缺省值
     report_url_prefix = '' # 命令行参数会设置,并且有缺省值
+    use_vue_report = False
