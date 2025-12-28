@@ -9,6 +9,11 @@ I'm also applying `fixture` mechanism to `cytest` to make sure it is so popular 
 
 ## Installation
 
-```py
+```sh
 pip3 install cytest
+```
+
+## Run
+```sh
+python3 -m hytest  --lang=en
 ```
