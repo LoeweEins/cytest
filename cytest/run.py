@@ -1,4 +1,5 @@
 # 框架入口文件
+# checked
 import re,os,traceback
 from .cfg import l, Settings
 # 模块在被引用时，就会被执行，进行初始化，解析命令行参数得到解析

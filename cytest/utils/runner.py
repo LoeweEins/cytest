@@ -1,3 +1,4 @@
+# checked
 # 用例框架执行引擎
 
 import time, inspect # inspect 用于获取函数签名和参数
@@ -818,8 +819,8 @@ class Runner:
     def trim_stack_trace(cls, stacktrace):
 
         # 依赖注入失败, 删除调用堆栈前面一大段信息
-        if 'cytest.utils.runner.DenpendencyInjectionFail:' in stacktrace:  
-            stacktrace = stacktrace.split("cytest.utils.runner.DenpendencyInjectionFail:",1)[-1].strip()
+        if 'cytest.utils.runner.DependencyInjectionFail:' in stacktrace:  
+            stacktrace = stacktrace.split("cytest.utils.runner.DependencyInjectionFail:",1)[-1].strip()
             return stacktrace
         
 

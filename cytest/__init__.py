@@ -1,3 +1,4 @@
+# checked
 from .common import signal,GSTORE,INFO,STEP,CHECK_POINT,LOG_IMG,SELENIUM_LOG_SCREEN, CheckPointFail
 # api 暴露在 cytest 包顶层，方便直接导入
 

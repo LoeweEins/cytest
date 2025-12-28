@@ -1,3 +1,4 @@
+# checked
 # 这个文档用于定语言和报告标题、URL前缀
 supportedLang = ['zh','en','de']
 

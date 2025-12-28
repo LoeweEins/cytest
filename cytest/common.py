@@ -1,3 +1,4 @@
+# checked
 # 定义了一些全局变量，在 cytest 的__init__.py 中导入到包顶层 
 # 供各模块使用
 from .utils.signal import signal
