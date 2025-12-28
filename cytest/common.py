@@ -5,6 +5,7 @@ from .utils.signal import signal
 from .utils.runner import Runner, CheckPointFail
 from .cfg import l
 
+import time
 from datetime import datetime
 import inspect # 获取CHECK_POINT()行的运行环境，变量、源代码、调用栈
 import executing # 找到这行代码在Python内部 语法树 中的节点
@@ -101,6 +102,14 @@ def INFO(*args, sep=' ', end='\n'):
     logStr = sep.join([str(arg) for arg in args]) + end
     # 通过 signal 发送 info 信号
     signal.info(logStr)
+
+    # !!!!!!!!!!!!!!!!!!新增功能：保存到当前用例对象的 log_records 属性中 !!!!!!!!!!!!!!!!!!
+    if Runner.curRunningCase:
+        Runner.curRunningCase.log_records.append({
+            "type": "info",
+            "content": logStr.strip(),
+            "timestamp": time.time()
+        })
 
 def STEP(stepNo:int,desc:str):
     """
