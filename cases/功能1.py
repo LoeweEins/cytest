@@ -28,6 +28,7 @@ def suite_setup():
     INFO(GSTORE.hello)
     INFO(GSTORE['hello'])
     INFO(GSTORE.good)
+    INFO(GSTORE.good2)
     INFO(GSTORE['good'])
     INFO(GSTORE['abc'])
     pass

@@ -63,7 +63,7 @@
 
                         <div v-for="(log, idx) in item.logs" :key="idx">
                             <div v-if="log.type === 'step'" class="log-step">
-                                <b>Step {{ log.step_no }}:</b> {{ log.content }}
+                                <b>Step {{ log.step_no }}:</b> {{ log.content || log.description }}
                             </div>
                             <div v-else-if="log.type === 'checkpoint'" :class="log.status === 'pass' ? 'log-cp-pass' : 'log-cp-fail'">
                                 <el-icon style="vertical-align: middle; margin-right: 5px;">
@@ -82,12 +82,12 @@
     </div>
 
     <script>
-        // === Python 数据注入点 ===
+        // 数据注入
         const rawData = {{ REPORT_DATA }}; 
         
-        const { createApp, computed, ref } = Vue;
-        const { ElementPlus } = ElementPlus;
-        const ElementPlusIconsVue = window.ElementPlusIconsVue;
+        const { createApp, computed, ref } = window.Vue;
+
+        const { Check, Close, Search } = window.ElementPlusIconsVue;
 
         const app = createApp({
             setup() {
@@ -122,7 +122,7 @@
                 return {
                     summary, cases, reportTitle, generateTime,
                     filterStatus, searchText, activeNames,
-                    passRate, filteredCases, getStatusType
+                    passRate, filteredCases, getStatusType, Search
                 }
             }
         });

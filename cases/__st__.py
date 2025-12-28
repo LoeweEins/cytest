@@ -7,6 +7,7 @@ force_tags = ['功能测试']
 def suite_setup():
     GSTORE.hello = 'hellooooooooooooooooooooooo'
     GSTORE['good'] = '333333333333333'
+    GSTORE['good2'] = 'good2222222222222'
     gs.driver = 'abc'
     INFO('总初始化')
 
