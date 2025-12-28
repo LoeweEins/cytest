@@ -14,6 +14,9 @@ from cytest.common import GSTORE
 
 from .runner import Collector
 from ..cfg import l,Settings
+
+
+
 # logging 官方日志模块
 # os 处理路径
 # time 处理时间
@@ -400,6 +403,84 @@ class TextLogger:
     # 记录图片文件路径，真正的图片保存在 html 里
     def log_img(self,imgPath: str, width: str = None):
         logger.info(f'picture {imgPath}')
+
+
+
+# !!!!!!!!!!!!!!!!!新加的 vue 相关日志功能 !!!!!!!!!!!!!!!!!!
+import json
+from .runner import Runner
+from .signal import signal
+
+
+class VueReportLogger:
+    """
+    用于生成基于 vue 的 html 报告
+    """
+    def test_end(self, runner):
+
+        # 准备数据结构
+        report_data = {
+            "title": Settings.report_title,
+            "generateTime": time.strftime('%Y-%m-%d %H:%M:%S'),
+            "summary": {
+                "case_count": stats.result['case_count'],
+                "case_pass": stats.result['case_pass'],
+                "case_fail": stats.result['case_fail'],
+                "case_abort": stats.result['case_abort'],
+            },
+            "cases": [self._serialize_case(case) for case in Runner.case_list]
+        }
+
+        # 读取 html 模版文件
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        template_path = os.path.join(base_dir, 'template_vue.html')
+
+        if not os.path.exists(template_path):
+            print(f"Error: 找不到模版文件 {template_path}", style='bright_red')
+            return
+        with open(template_path, 'r', encoding='utf-8') as f:
+            template_content = f.read()
+        # 注入数据
+        json_str = json.dumps(report_data, ensure_ascii=False)
+        final_html = template_content.replace('{{ REPORT_DATA }}', json_str)
+
+        # 保存文件
+        timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime(stats.start_time))
+        report_filename = f'vue_report_{timestamp}.html'
+        report_path = os.path.join('log', report_filename)
+
+        os.makedirs('log', exist_ok=True)
+
+        with open(report_path, 'w', encoding='utf-8') as f:
+            f.write(final_html)
+
+        print(f"\n  Vue 报告已生成 : {report_path} \n", style='green')
+
+        # 自动打开报告
+        if Settings.auto_open_report:
+            import platform
+            try:
+                if platform.system().lower() == 'windows':
+                    os.startfile(report_path)
+                elif platform.system().lower() == 'darwin':
+                    os.system(f'open "{report_path}"')
+            except:
+                pass
+    def _serialize_case(self, case):
+        return {
+            "id": getattr(case, "id", str(id(case))),
+            "name": getattr(case, "name", "未命名"),
+            "status": getattr(case, "execRet", "unknown"),
+            "duration": getattr(case, "_case_duration", 0),
+            "stacktrace": getattr(case, "stacktrace", ""),
+            # !!!!!!!!!!!!!!!!!!新增部分：日志记录 !!!!!!!!!!!!!!!!!!
+            "logs": getattr(case, "log_records", []),
+        }
+
+
+
+
+
 
 
 from dominate.tags import *
@@ -970,5 +1051,6 @@ from .signal import signal
 signal.register([
     stats,
     ConsoleLogger(), 
-    TextLogger(), 
+    TextLogger(),
+    VueReportLogger(), 
     HtmlLogger()])

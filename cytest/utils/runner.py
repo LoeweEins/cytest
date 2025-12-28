@@ -729,7 +729,7 @@ class Runner:
             # 记录当前执行的case
             cls.curRunningCase = case
             # !!!!!!!!!!!!!!!!!!!!!!为实现 vue 所需，在 case 对象上设置一个属性 !!!!!!!!!!!!!!!!!!!!!!
-            cls.log_records = []  # 用于保存当前用例的所有日志记录
+            case.log_records = []  # 用于保存当前用例的所有日志记录
 
             #---------------- 如果用例有 setup，就执行 setup -----------------
             caseSetup = getattr(case,'setup',None)

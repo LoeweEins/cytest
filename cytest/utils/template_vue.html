@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Cytest 测试报告</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
+    <script src="https://unpkg.com/element-plus"></script>
+    <script src="https://unpkg.com/@element-plus/icons-vue"></script>
+    
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', sans-serif; margin: 0; background: #f0f2f5; }
+        .container { width: 1200px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1); }
+        .header { text-align: center; margin-bottom: 30px; }
+        .summary-cards { display: flex; justify-content: space-around; margin-bottom: 20px; }
+        .log-step { border-left: 4px solid #409EFF; padding-left: 10px; margin: 8px 0; background: #ecf5ff; font-size: 14px; padding: 8px;}
+        .log-cp-pass { border-left: 4px solid #67C23A; padding-left: 10px; margin: 8px 0; background: #f0f9eb; padding: 8px;}
+        .log-cp-fail { border-left: 4px solid #F56C6C; padding-left: 10px; margin: 8px 0; background: #fef0f0; padding: 8px;}
+        .log-info { color: #909399; font-size: 13px; margin: 5px 0 5px 20px; }
+        .stacktrace-box { background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto; font-family: Consolas, monospace; margin-top: 10px;}
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container">
+            <div class="header">
+                <h1>{{ reportTitle }}</h1>
+                <p style="color: #909399;">生成时间: {{ generateTime }}</p>
+            </div>
+
+            <div class="summary-cards">
+                <el-statistic title="总用例" :value="summary.case_count"></el-statistic>
+                <el-statistic title="通过" :value="summary.case_pass" value-style="color: #67C23A"></el-statistic>
+                <el-statistic title="失败" :value="summary.case_fail" value-style="color: #F56C6C"></el-statistic>
+                <el-statistic title="通过率" :value="passRate + '%'"></el-statistic>
+            </div>
+
+            <div style="margin: 20px 0; display: flex; align-items: center;">
+                <el-radio-group v-model="filterStatus">
+                    <el-radio-button label="all">全部显示</el-radio-button>
+                    <el-radio-button label="fail">只看失败</el-radio-button>
+                </el-radio-group>
+                <el-input v-model="searchText" placeholder="输入用例名称过滤..." style="width: 300px; margin-left: 20px;" prefix-icon="Search" clearable></el-input>
+            </div>
+
+            <el-collapse v-model="activeNames">
+                <el-collapse-item v-for="item in filteredCases" :key="item.id" :name="item.id">
+                    <template #title>
+                        <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding-right: 10px;">
+                            <div style="display: flex; align-items: center;">
+                                <el-tag :type="getStatusType(item.status)" effect="dark" style="margin-right: 15px; width: 60px; text-align: center;">{{ item.status.toUpperCase() }}</el-tag>
+                                <span style="font-weight: bold; font-size: 15px;">{{ item.name }}</span>
+                            </div>
+                            <span style="color: #909399; font-size: 13px;">⏱ {{ item.duration.toFixed(3) }}s</span>
+                        </div>
+                    </template>
+                    
+                    <div style="padding: 10px 20px;">
+                        <div v-if="(item.status === 'fail' || item.status === 'abort') && item.stacktrace" style="margin-bottom: 20px;">
+                            <el-alert title="异常堆栈信息" type="error" :closable="false" show-icon></el-alert>
+                            <div class="stacktrace-box"><pre>{{ item.stacktrace }}</pre></div>
+                        </div>
+
+                        <div v-for="(log, idx) in item.logs" :key="idx">
+                            <div v-if="log.type === 'step'" class="log-step">
+                                <b>Step {{ log.step_no }}:</b> {{ log.content }}
+                            </div>
+                            <div v-else-if="log.type === 'checkpoint'" :class="log.status === 'pass' ? 'log-cp-pass' : 'log-cp-fail'">
+                                <el-icon style="vertical-align: middle; margin-right: 5px;">
+                                    <component :is="log.status==='pass' ? 'Check' : 'Close'" />
+                                </el-icon>
+                                <b>CheckPoint:</b> {{ log.content }} 
+                            </div>
+                            <div v-else class="log-info">{{ log.content }}</div>
+                        </div>
+                    </div>
+                </el-collapse-item>
+            </el-collapse>
+            
+            <el-empty v-if="filteredCases.length === 0" description="没有找到符合条件的测试用例"></el-empty>
+        </div>
+    </div>
+
+    <script>
+        // === Python 数据注入点 ===
+        const rawData = {{ REPORT_DATA }}; 
+        
+        const { createApp, computed, ref } = Vue;
+        const { ElementPlus } = ElementPlus;
+        const ElementPlusIconsVue = window.ElementPlusIconsVue;
+
+        const app = createApp({
+            setup() {
+                const summary = ref(rawData.summary);
+                const cases = ref(rawData.cases);
+                const reportTitle = ref(rawData.title);
+                const generateTime = ref(rawData.generateTime);
+                const filterStatus = ref('all');
+                const searchText = ref('');
+                const activeNames = ref([]); 
+
+                const passRate = computed(() => {
+                    if (summary.value.case_count === 0) return 0;
+                    return ((summary.value.case_pass / summary.value.case_count) * 100).toFixed(2);
+                });
+
+                const filteredCases = computed(() => {
+                    return cases.value.filter(c => {
+                        if (filterStatus.value === 'fail' && c.status === 'pass') return false;
+                        if (searchText.value && !c.name.toLowerCase().includes(searchText.value.toLowerCase())) return false;
+                        return true;
+                    });
+                });
+
+                const getStatusType = (status) => {
+                    if (status === 'pass') return 'success';
+                    if (status === 'fail') return 'danger';
+                    if (status === 'abort') return 'warning';
+                    return 'info';
+                };
+
+                return {
+                    summary, cases, reportTitle, generateTime,
+                    filterStatus, searchText, activeNames,
+                    passRate, filteredCases, getStatusType
+                }
+            }
+        });
+
+        app.use(ElementPlus);
+        // 注册图标
+        for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+            app.component(key, component)
+        }
+        app.mount('#app');
+    </script>
+</body>
+</html>

@@ -123,6 +123,13 @@ def STEP(stepNo:int,desc:str):
     desc :   description about this step
     """
     signal.step(stepNo,desc)
+    if Runner.curRunningCase:
+        Runner.curRunningCase.log_records.append({
+            "type": "step",
+            "step_no": stepNo,
+            "description": desc,
+            "timestamp": time.time()
+        })
 
 
 # 比较操作符映射表
@@ -158,6 +165,17 @@ def CHECK_POINT(desc:str, condition, failStop=True, failLogScreenWebDriver = Non
     failLogScreenWebDriver : Selenium web driver object,
         when you want a screenshot image of browser in test report if current check point fail.
     """
+
+    # !!!!!!!!!!!!!!!!无论成功失败，先记录数据!!!!!!!!!!!!!!!!
+    status = "pass" if condition else "fail"
+    if Runner.curRunningCase:
+        Runner.curRunningCase.log_records.append({
+            "type": "checkpoint",
+            "status": status,
+            "content": desc,
+            "timestamp": time.time()
+        })
+
 
     # ✅  check point pass
     if condition:
