@@ -205,7 +205,7 @@ body {
 
 
 /* 用例状态 */
-.case_setup, .case_teardown, .case_default_setup, .case_default_teardown{
+.case_setup, .case_teardown, .case_default_setup, .case_default_teardown, .case_st_label{
     background: aliceblue;
     padding: .3rem .2rem;
 }
