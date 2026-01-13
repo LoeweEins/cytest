@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 
-// --- 1. 定义响应式数据 ---
+// --- 定义响应式数据 ---
 
 // 定义一个数组，用来存日志对象
 // 泛型/对象结构: { id: 1, time: '10:00:01', level: 'INFO', msg: 'xxx' }

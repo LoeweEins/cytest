@@ -1,4 +1,17 @@
 # vue-learning
+用的是 Vite 方式渲染 .vue 文件，跟 html 完全不同
+## 怎么找目录
+真正的代码放在 src/components 下面
+先使用
+```bash
+npm run dev
+```
+按住 cmd 键，点击终端中的 
+http://localhost:5173/
+就可以打开了
+
+
+
 
 This template should help get you started developing with Vue 3 in Vite.
 
