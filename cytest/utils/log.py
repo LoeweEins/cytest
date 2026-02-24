@@ -406,32 +406,93 @@ class TextLogger:
 
 
 
-# !!!!!!!!!!!!!!!!!新加的 vue 相关日志功能 !!!!!!!!!!!!!!!!!!
 import json
-from .runner import Runner
+from .runner import Runner, Collector
 from .signal import signal
 
 
 class VueReportLogger:
     """
-    用于生成基于 vue 的 html 报告
+    Vue 3 + Element Plus
+    signal 广播
     """
-    def test_end(self, runner):
 
-        # 准备数据结构
-        report_data = {
-            "title": Settings.report_title,
-            "generateTime": time.strftime('%Y-%m-%d %H:%M:%S'),
-            "summary": {
-                "case_count": stats.result['case_count'],
-                "case_pass": stats.result['case_pass'],
-                "case_fail": stats.result['case_fail'],
-                "case_abort": stats.result['case_abort'],
-            },
-            "cases": [self._serialize_case(case) for case in Runner.case_list]
+    def __init__(self):
+        self._suite_tree = []
+        self._suite_stack = []
+        self._current_file_node = None
+        self._current_case_node = None
+        self._suite_events = []
+
+    def enter_suite(self, name, suitetype):
+        node = {
+            "type": "suite_dir" if suitetype == "dir" else "suite_file",
+            "name": name,
+            "children": [],
+            "events": [],
+        }
+        if self._suite_stack:
+            self._suite_stack[-1]["children"].append(node)
+        else:
+            self._suite_tree.append(node)
+
+        if suitetype == "dir":
+            self._suite_stack.append(node)
+        else:
+            self._current_file_node = node
+            if self._suite_stack:
+                self._suite_stack[-1]["children"].append(node) if node not in self._suite_stack[-1]["children"] else None
+
+    def setup_begin(self, name, utype): ...
+
+    def setup_fail(self, name, utype, e, stacktrace):
+        event = {"action": "setup", "utype": utype, "name": name,
+                 "status": "fail", "error": str(e), "stacktrace": stacktrace}
+        self._suite_events.append(event)
+
+    def teardown_fail(self, name, utype, e, stacktrace):
+        event = {"action": "teardown", "utype": utype, "name": name,
+                 "status": "fail", "error": str(e), "stacktrace": stacktrace}
+        self._suite_events.append(event)
+
+    def enter_case(self, caseId, name, case_className):
+        self._current_case_node = {
+            "caseId": caseId,
+            "className": case_className,
         }
 
-        # 读取 html 模版文件
+    def test_start(self, _title=''):
+        self._start_time = time.time()
+
+    def test_end(self, runner):
+        ret = stats.result
+        case_count_to_run = ret['case_count_to_run']
+        blocked = case_count_to_run - ret['case_pass'] - ret['case_fail'] - ret['case_abort']
+
+        report_data = {
+            "version": version,
+            "title": Settings.report_title,
+            "startTime": time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(stats.start_time)),
+            "endTime": time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(stats.end_time)),
+            "generateTime": time.strftime('%Y-%m-%d %H:%M:%S'),
+            "duration": round(stats.test_duration, 3),
+            "summary": {
+                "case_count_to_run": case_count_to_run,
+                "case_count": ret['case_count'],
+                "case_pass": ret['case_pass'],
+                "case_fail": ret['case_fail'],
+                "case_abort": ret['case_abort'],
+                "blocked": blocked,
+                "suite_setup_fail": ret['suite_setup_fail'],
+                "suite_teardown_fail": ret['suite_teardown_fail'],
+                "case_setup_fail": ret['case_setup_fail'],
+                "case_teardown_fail": ret['case_teardown_fail'],
+            },
+            "cases": [self._serialize_case(case) for case in Runner.case_list],
+            "suiteEvents": self._suite_events,
+            "lang": l.n,
+        }
+
         base_dir = os.path.dirname(os.path.abspath(__file__))
         template_path = os.path.join(base_dir, 'template_vue.html')
 
@@ -440,15 +501,13 @@ class VueReportLogger:
             return
         with open(template_path, 'r', encoding='utf-8') as f:
             template_content = f.read()
-        # 注入数据
-        json_str = json.dumps(report_data, ensure_ascii=False)
-        final_html = template_content.replace('{{ REPORT_DATA }}', json_str)
 
-        # 保存文件
+        json_str = json.dumps(report_data, ensure_ascii=False)
+        final_html = template_content.replace('__REPORT_DATA__', json_str)
+
         timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime(stats.start_time))
         report_filename = f'vue_report_{timestamp}.html'
         report_path = os.path.join('log', report_filename)
-
         os.makedirs('log', exist_ok=True)
 
         with open(report_path, 'w', encoding='utf-8') as f:
@@ -456,25 +515,31 @@ class VueReportLogger:
 
         print(f"\n  Vue 报告已生成 : {report_path} \n", style='green')
 
-        # 自动打开报告
         if Settings.auto_open_report:
-            import platform
+            import platform as _plat
             try:
-                if platform.system().lower() == 'windows':
+                if _plat.system().lower() == 'windows':
                     os.startfile(report_path)
-                elif platform.system().lower() == 'darwin':
+                elif _plat.system().lower() == 'darwin':
                     os.system(f'open "{report_path}"')
             except:
                 pass
+
     def _serialize_case(self, case):
         return {
-            "id": getattr(case, "id", str(id(case))),
+            "id": getattr(case, "_caseId", str(id(case))),
             "name": getattr(case, "name", "未命名"),
+            "className": type(case).__name__,
             "status": getattr(case, "execRet", "unknown"),
-            "duration": getattr(case, "_case_duration", 0),
+            "duration": round(getattr(case, "_case_duration", 0), 3),
+            "stepsDuration": round(getattr(case, "_steps_duration", 0), 3),
+            "setupDuration": round(getattr(case, "_setup_duration", 0), 3) if hasattr(case, "_setup_duration") else None,
+            "teardownDuration": round(getattr(case, "_teardown_duration", 0), 3) if hasattr(case, "_teardown_duration") else None,
+            "error": str(getattr(case, "error", "")) if hasattr(case, "error") else "",
             "stacktrace": getattr(case, "stacktrace", ""),
-            # !!!!!!!!!!!!!!!!!!新增部分：日志记录 !!!!!!!!!!!!!!!!!!
+            "tags": getattr(case, "tags", []),
             "logs": getattr(case, "log_records", []),
+            "beginTime": time.strftime('%m-%d %H:%M:%S', time.localtime(getattr(case, "_case_begin_time", 0))),
         }
 
 

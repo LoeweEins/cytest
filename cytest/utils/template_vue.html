@@ -2,137 +2,452 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cytest 测试报告</title>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
-    <script src="https://unpkg.com/element-plus"></script>
-    <script src="https://unpkg.com/@element-plus/icons-vue"></script>
-    
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <style>
-        body { font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', sans-serif; margin: 0; background: #f0f2f5; }
-        .container { width: 1200px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1); }
-        .header { text-align: center; margin-bottom: 30px; }
-        .summary-cards { display: flex; justify-content: space-around; margin-bottom: 20px; }
-        .log-step { border-left: 4px solid #409EFF; padding-left: 10px; margin: 8px 0; background: #ecf5ff; font-size: 14px; padding: 8px;}
-        .log-cp-pass { border-left: 4px solid #67C23A; padding-left: 10px; margin: 8px 0; background: #f0f9eb; padding: 8px;}
-        .log-cp-fail { border-left: 4px solid #F56C6C; padding-left: 10px; margin: 8px 0; background: #fef0f0; padding: 8px;}
-        .log-info { color: #909399; font-size: 13px; margin: 5px 0 5px 20px; }
-        .stacktrace-box { background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto; font-family: Consolas, monospace; margin-top: 10px;}
+        :root {
+            --green: #34C759; --red: #FF3B30; --orange: #FF9500; --purple: #AF52DE;
+            --blue: #007AFF; --teal: #5AC8FA; --gray: #8E8E93; --gray2: #AEAEB2;
+            --gray3: #C7C7CC; --gray4: #D1D1D6; --gray5: #E5E5EA; --gray6: #F2F2F7;
+            --label: #1C1C1E; --label2: #3A3A3C; --label3: #636366;
+            --bg: #F2F2F7; --card: rgba(255,255,255,0.72); --glass: rgba(255,255,255,0.6);
+            --radius: 16px; --radius-sm: 12px; --radius-xs: 8px;
+            --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06);
+            --shadow-lg: 0 2px 8px rgba(0,0,0,0.04), 0 8px 32px rgba(0,0,0,0.08);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+                         'Helvetica Neue', 'PingFang SC', sans-serif;
+            font-size: 15px; color: var(--label); background: var(--bg);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container { max-width: 1120px; margin: 0 auto; padding: 24px 20px 60px; }
+
+        /* ─── Hero Header ─── */
+        .hero {
+            background: linear-gradient(145deg, #1C1C1E 0%, #2C2C2E 100%);
+            border-radius: 20px; padding: 40px 44px; color: #fff;
+            margin-bottom: 28px; position: relative; overflow: hidden;
+        }
+        .hero::before {
+            content: ''; position: absolute; top: -60%; right: -20%;
+            width: 500px; height: 500px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(0,122,255,0.15) 0%, transparent 70%);
+        }
+        .hero h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 6px; position: relative; }
+        .hero .subtitle { font-size: 15px; color: var(--gray2); display: flex; gap: 20px; flex-wrap: wrap; position: relative; }
+        .hero .subtitle span { display: inline-flex; align-items: center; gap: 5px; }
+
+        /* ─── Metric Cards ─── */
+        .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+        .glass-card {
+            background: var(--card); backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-radius: var(--radius); padding: 24px 28px;
+            box-shadow: var(--shadow); border: 0.5px solid rgba(0,0,0,0.04);
+        }
+        .metric-card { text-align: center; }
+        .metric-card .metric-label { font-size: 13px; color: var(--gray); font-weight: 500; margin-bottom: 6px; }
+        .metric-card .metric-value { font-size: 32px; font-weight: 700; letter-spacing: -1px; }
+        .metric-card .metric-sub { font-size: 12px; color: var(--gray2); margin-top: 4px; }
+
+        /* ─── Stats Row ─── */
+        .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+        .glass-card h3 { font-size: 17px; font-weight: 600; color: var(--label); margin-bottom: 18px; }
+
+        .detail-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .detail-table tr { border-bottom: 0.5px solid var(--gray5); }
+        .detail-table tr:last-child { border-bottom: none; }
+        .detail-table td { padding: 9px 4px; }
+        .detail-table td:first-child { color: var(--label3); }
+        .detail-table td:last-child { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+        .val-error { color: var(--red); }
+
+        .bar-group { display: flex; flex-direction: column; gap: 20px; }
+        .bar-label { font-size: 13px; color: var(--label3); margin-bottom: 5px; display: flex; justify-content: space-between; }
+        .bar-label strong { color: var(--label); font-weight: 600; }
+        .bar-track { height: 8px; background: var(--gray6); border-radius: 4px; overflow: hidden; }
+        .bar-fill { height: 100%; border-radius: 4px; transition: width 0.8s cubic-bezier(0.25, 1, 0.5, 1); }
+
+        /* ─── Suite Event ─── */
+        .event-card { margin-bottom: 24px; }
+        .event-item {
+            background: #FFF5F5; border-radius: var(--radius-xs); padding: 12px 16px;
+            margin-top: 8px; font-size: 14px; color: var(--label2);
+            border-left: 3px solid var(--red);
+        }
+
+        /* ─── Toolbar ─── */
+        .toolbar {
+            background: var(--card); backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-radius: var(--radius); padding: 12px 20px;
+            box-shadow: var(--shadow); border: 0.5px solid rgba(0,0,0,0.04);
+            margin-bottom: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+        }
+        .pill-group { display: flex; gap: 0; background: var(--gray6); border-radius: 10px; padding: 2px; }
+        .pill {
+            padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 500;
+            cursor: pointer; border: none; background: transparent; color: var(--label3);
+            transition: all 0.2s; font-family: inherit;
+        }
+        .pill.active { background: #fff; color: var(--label); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+        .search-box { flex: 1; min-width: 200px; max-width: 300px; position: relative; }
+        .search-box input {
+            width: 100%; padding: 8px 14px 8px 36px; border-radius: 10px;
+            border: 0.5px solid var(--gray4); background: var(--gray6);
+            font-size: 14px; outline: none; font-family: inherit; color: var(--label);
+            transition: all 0.2s;
+        }
+        .search-box input:focus { border-color: var(--blue); background: #fff; box-shadow: 0 0 0 3px rgba(0,122,255,0.12); }
+        .search-box .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--gray2); font-size: 14px; }
+        .tool-btn {
+            padding: 6px 16px; border-radius: 10px; font-size: 13px; font-weight: 500;
+            cursor: pointer; border: 0.5px solid var(--gray4); background: #fff; color: var(--label2);
+            transition: all 0.15s; font-family: inherit;
+        }
+        .tool-btn:hover { background: var(--gray6); }
+        .tool-btn.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+        .tool-btn.primary:hover { background: #0066D6; }
+
+        /* ─── Case List ─── */
+        .case-list {
+            background: var(--card); backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-radius: var(--radius); box-shadow: var(--shadow);
+            border: 0.5px solid rgba(0,0,0,0.04); overflow: hidden;
+        }
+        .case-item { border-bottom: 0.5px solid var(--gray5); }
+        .case-item:last-child { border-bottom: none; }
+        .case-row {
+            display: flex; align-items: center; padding: 14px 22px; cursor: pointer;
+            transition: background 0.12s; gap: 14px;
+        }
+        .case-row:hover { background: rgba(0,0,0,0.02); }
+        .case-row:active { background: rgba(0,0,0,0.04); }
+
+        .chevron {
+            width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;
+            color: var(--gray3); font-size: 11px; transition: transform 0.25s cubic-bezier(0.25,1,0.5,1); flex-shrink: 0;
+        }
+        .chevron.open { transform: rotate(90deg); }
+
+        .badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 700;
+            letter-spacing: 0.3px; text-transform: uppercase; flex-shrink: 0; min-width: 52px; text-align: center;
+        }
+        .badge-pass { background: rgba(52,199,89,0.12); color: var(--green); }
+        .badge-fail { background: rgba(255,59,48,0.10); color: var(--red); }
+        .badge-abort { background: rgba(175,82,222,0.10); color: var(--purple); }
+
+        .case-info { flex: 1; min-width: 0; }
+        .case-title { font-size: 15px; font-weight: 500; color: var(--label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .case-tags { display: flex; gap: 4px; margin-top: 3px; flex-wrap: wrap; }
+        .tag-chip { font-size: 11px; padding: 1px 8px; border-radius: 5px; background: var(--gray6); color: var(--gray); font-weight: 500; }
+        .case-time { font-size: 13px; color: var(--gray2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .case-dur { font-size: 13px; color: var(--label3); font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+        /* ─── Case Body ─── */
+        .case-body { padding: 4px 22px 18px 56px; }
+        .class-path { font-size: 12px; color: var(--gray2); font-family: 'SF Mono', Menlo, Consolas, monospace; margin-bottom: 10px; }
+
+        .alert-banner {
+            display: flex; align-items: flex-start; gap: 8px;
+            padding: 12px 16px; border-radius: var(--radius-xs);
+            font-size: 14px; margin-bottom: 10px;
+        }
+        .alert-fail { background: rgba(255,59,48,0.06); color: var(--red); }
+        .alert-abort { background: rgba(175,82,222,0.06); color: var(--purple); }
+        .trace-box {
+            background: #1C1C1E; color: #E5E5EA; padding: 16px 18px;
+            border-radius: var(--radius-sm); font-family: 'SF Mono', Menlo, Consolas, monospace;
+            font-size: 12px; line-height: 1.7; overflow-x: auto; margin-bottom: 12px;
+            white-space: pre-wrap;
+        }
+
+        .section { margin: 8px 0; border-radius: var(--radius-xs); overflow: hidden; }
+        .section-head {
+            font-size: 12px; font-weight: 600; padding: 8px 14px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .section-head .dur { font-weight: 400; opacity: 0.6; }
+        .sec-setup { background: rgba(0,122,255,0.06); border-left: 3px solid var(--blue); }
+        .sec-setup .section-head { color: var(--blue); }
+        .sec-steps { background: rgba(90,200,250,0.06); border-left: 3px solid var(--teal); }
+        .sec-steps .section-head { color: #0C8599; }
+        .sec-teardown { background: rgba(255,149,0,0.06); border-left: 3px solid var(--orange); }
+        .sec-teardown .section-head { color: var(--orange); }
+
+        .log-step {
+            display: flex; gap: 10px; padding: 8px 14px; margin: 3px 0;
+            background: rgba(0,122,255,0.04); border-radius: 6px;
+        }
+        .log-step .s-tag { color: var(--blue); font-weight: 600; white-space: nowrap; font-size: 13px; }
+        .log-step .s-desc { font-size: 14px; color: var(--label2); }
+
+        .log-cp { display: flex; gap: 10px; padding: 8px 14px; margin: 3px 0; border-radius: 6px; }
+        .cp-pass { background: rgba(52,199,89,0.05); }
+        .cp-fail { background: rgba(255,59,48,0.05); }
+        .log-cp .c-tag { font-weight: 600; white-space: nowrap; font-size: 13px; }
+        .cp-pass .c-tag { color: var(--green); }
+        .cp-fail .c-tag { color: var(--red); }
+        .log-cp .c-desc { font-size: 14px; color: var(--label2); }
+        .log-info { font-size: 13px; color: var(--gray); padding: 2px 14px 2px 40px; white-space: pre-wrap; word-break: break-all; }
+
+        /* ─── Floating Nav ─── */
+        .float-nav {
+            position: fixed; right: 24px; bottom: 28px; z-index: 100;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .fab {
+            width: 44px; height: 44px; border-radius: 22px; border: none;
+            background: var(--glass); backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            box-shadow: var(--shadow-lg); border: 0.5px solid rgba(0,0,0,0.06);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 18px; color: var(--label2); transition: all 0.2s;
+        }
+        .fab:hover { transform: scale(1.08); background: rgba(255,255,255,0.85); }
+        .fab:active { transform: scale(0.96); }
+
+        .empty { text-align: center; padding: 64px 20px; color: var(--gray3); }
+        .empty .e-icon { font-size: 44px; margin-bottom: 10px; }
+        .empty .e-text { font-size: 16px; font-weight: 500; }
+
+        @media (max-width: 768px) {
+            .metrics { grid-template-columns: repeat(2, 1fr); }
+            .stats-row { grid-template-columns: 1fr; }
+            .container { padding: 16px 12px 48px; }
+            .hero { padding: 28px 24px; border-radius: 16px; }
+            .hero h1 { font-size: 26px; }
+            .case-body { padding-left: 22px; }
+        }
     </style>
 </head>
 <body>
-    <div id="app">
-        <div class="container">
-            <div class="header">
-                <h1>{{ reportTitle }}</h1>
-                <p style="color: #909399;">生成时间: {{ generateTime }}</p>
-            </div>
+<div id="app">
+    <div class="container">
 
-            <div class="summary-cards">
-                <el-statistic title="总用例" :value="summary.case_count"></el-statistic>
-                <el-statistic title="通过" :value="summary.case_pass" value-style="color: #67C23A"></el-statistic>
-                <el-statistic title="失败" :value="summary.case_fail" value-style="color: #F56C6C"></el-statistic>
-                <el-statistic title="通过率" :value="passRate + '%'"></el-statistic>
+        <!-- Hero -->
+        <div class="hero">
+            <h1>{{ data.title }}</h1>
+            <div class="subtitle">
+                <span>cytest v{{ data.version }}</span>
+                <span>{{ data.startTime }} → {{ data.endTime }}</span>
+                <span>{{ data.duration }}s</span>
             </div>
+        </div>
 
-            <div style="margin: 20px 0; display: flex; align-items: center;">
-                <el-radio-group v-model="filterStatus">
-                    <el-radio-button label="all">全部显示</el-radio-button>
-                    <el-radio-button label="fail">只看失败</el-radio-button>
-                </el-radio-group>
-                <el-input v-model="searchText" placeholder="输入用例名称过滤..." style="width: 300px; margin-left: 20px;" prefix-icon="Search" clearable></el-input>
+        <!-- Metric Cards -->
+        <div class="metrics">
+            <div class="glass-card metric-card">
+                <div class="metric-label">{{ i18n('总用例', 'Total') }}</div>
+                <div class="metric-value">{{ s.case_count_to_run }}</div>
+                <div class="metric-sub">{{ i18n('实际执行', 'Executed') }} {{ s.case_count }}</div>
             </div>
+            <div class="glass-card metric-card">
+                <div class="metric-label">{{ i18n('通过', 'Passed') }}</div>
+                <div class="metric-value" style="color:var(--green)">{{ s.case_pass }}</div>
+                <div class="metric-sub">{{ passRate }}%</div>
+            </div>
+            <div class="glass-card metric-card">
+                <div class="metric-label">{{ i18n('失败', 'Failed') }}</div>
+                <div class="metric-value" :style="{ color: s.case_fail ? 'var(--red)' : 'var(--label)' }">{{ s.case_fail }}</div>
+                <div class="metric-sub">{{ pct(s.case_fail) }}%</div>
+            </div>
+            <div class="glass-card metric-card">
+                <div class="metric-label">{{ i18n('异常 / 阻塞', 'Abort / Blocked') }}</div>
+                <div class="metric-value" :style="{ color: (s.case_abort + s.blocked) ? 'var(--purple)' : 'var(--label)' }">{{ s.case_abort + s.blocked }}</div>
+                <div class="metric-sub">{{ i18n('异常', 'Abort') }} {{ s.case_abort }} · {{ i18n('阻塞', 'Blocked') }} {{ s.blocked }}</div>
+            </div>
+        </div>
 
-            <el-collapse v-model="activeNames">
-                <el-collapse-item v-for="item in filteredCases" :key="item.id" :name="item.id">
-                    <template #title>
-                        <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding-right: 10px;">
-                            <div style="display: flex; align-items: center;">
-                                <el-tag :type="getStatusType(item.status)" effect="dark" style="margin-right: 15px; width: 60px; text-align: center;">{{ item.status.toUpperCase() }}</el-tag>
-                                <span style="font-weight: bold; font-size: 15px;">{{ item.name }}</span>
+        <!-- Stats Row -->
+        <div class="stats-row">
+            <div class="glass-card">
+                <h3>{{ i18n('详细统计', 'Details') }}</h3>
+                <table class="detail-table">
+                    <tr><td>{{ i18n('预备执行', 'Plan to run') }}</td><td>{{ s.case_count_to_run }}</td></tr>
+                    <tr><td>{{ i18n('实际执行', 'Actually run') }}</td><td>{{ s.case_count }}</td></tr>
+                    <tr><td>{{ i18n('通过', 'Passed') }}</td><td style="color:var(--green)">{{ s.case_pass }}</td></tr>
+                    <tr><td>{{ i18n('失败', 'Failed') }}</td><td :class="{ 'val-error': s.case_fail }">{{ s.case_fail }}</td></tr>
+                    <tr><td>{{ i18n('异常', 'Exception') }}</td><td :class="{ 'val-error': s.case_abort }">{{ s.case_abort }}</td></tr>
+                    <tr><td>{{ i18n('阻塞', 'Blocked') }}</td><td :class="{ 'val-error': s.blocked }">{{ s.blocked }}</td></tr>
+                    <tr><td>{{ i18n('套件初始化失败', 'Suite setup fail') }}</td><td :class="{ 'val-error': s.suite_setup_fail }">{{ s.suite_setup_fail }}</td></tr>
+                    <tr><td>{{ i18n('套件清除失败', 'Suite teardown fail') }}</td><td :class="{ 'val-error': s.suite_teardown_fail }">{{ s.suite_teardown_fail }}</td></tr>
+                    <tr><td>{{ i18n('用例初始化失败', 'Case setup fail') }}</td><td :class="{ 'val-error': s.case_setup_fail }">{{ s.case_setup_fail }}</td></tr>
+                    <tr><td>{{ i18n('用例清除失败', 'Case teardown fail') }}</td><td :class="{ 'val-error': s.case_teardown_fail }">{{ s.case_teardown_fail }}</td></tr>
+                </table>
+            </div>
+            <div class="glass-card">
+                <h3>{{ i18n('用例分布', 'Distribution') }}</h3>
+                <div class="bar-group">
+                    <div>
+                        <div class="bar-label"><span>{{ i18n('通过', 'Passed') }}</span><strong>{{ pct(s.case_pass) }}%</strong></div>
+                        <div class="bar-track"><div class="bar-fill" :style="{ width: barW(s.case_pass), background: 'var(--green)' }"></div></div>
+                    </div>
+                    <div>
+                        <div class="bar-label"><span>{{ i18n('失败', 'Failed') }}</span><strong>{{ pct(s.case_fail) }}%</strong></div>
+                        <div class="bar-track"><div class="bar-fill" :style="{ width: barW(s.case_fail), background: 'var(--red)' }"></div></div>
+                    </div>
+                    <div>
+                        <div class="bar-label"><span>{{ i18n('异常', 'Exception') }}</span><strong>{{ pct(s.case_abort) }}%</strong></div>
+                        <div class="bar-track"><div class="bar-fill" :style="{ width: barW(s.case_abort), background: 'var(--purple)' }"></div></div>
+                    </div>
+                    <div>
+                        <div class="bar-label"><span>{{ i18n('阻塞', 'Blocked') }}</span><strong>{{ pct(s.blocked) }}%</strong></div>
+                        <div class="bar-track"><div class="bar-fill" :style="{ width: barW(s.blocked), background: 'var(--gray3)' }"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Suite Events -->
+        <div class="glass-card event-card" v-if="data.suiteEvents && data.suiteEvents.length">
+            <h3>{{ i18n('套件级别异常', 'Suite-Level Failures') }}</h3>
+            <div class="event-item" v-for="(ev, i) in data.suiteEvents" :key="i">
+                <b>{{ ev.utype }} {{ ev.action }}</b> — {{ ev.name }}<br/>{{ ev.error }}
+                <div class="trace-box" v-if="ev.stacktrace" style="margin-top:8px;">{{ ev.stacktrace }}</div>
+            </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="pill-group">
+                <button class="pill" :class="{ active: filter === 'all' }" @click="filter='all'">{{ i18n('全部', 'All') }} {{ data.cases.length }}</button>
+                <button class="pill" :class="{ active: filter === 'pass' }" @click="filter='pass'">{{ i18n('通过', 'Pass') }} {{ countBy('pass') }}</button>
+                <button class="pill" :class="{ active: filter === 'fail' }" @click="filter='fail'">{{ i18n('失败', 'Fail') }} {{ countBy('fail') }}</button>
+                <button class="pill" :class="{ active: filter === 'abort' }" @click="filter='abort'">{{ i18n('异常', 'Abort') }} {{ countBy('abort') }}</button>
+            </div>
+            <div class="search-box">
+                <span class="search-icon">⌕</span>
+                <input v-model="search" :placeholder="i18n('搜索用例…', 'Search…')"/>
+            </div>
+            <button class="tool-btn" @click="toggleAll">{{ allExp ? i18n('收起', 'Collapse') : i18n('展开', 'Expand') }}</button>
+            <button class="tool-btn primary" @click="summaryMode = !summaryMode">{{ summaryMode ? 'Detail' : 'Summary' }}</button>
+        </div>
+
+        <!-- Case List -->
+        <div class="case-list">
+            <template v-if="filtered.length">
+                <div class="case-item" v-for="c in filtered" :key="c.id" :ref="el => refs[c.id] = el">
+                    <div class="case-row" @click="toggle(c.id)">
+                        <span class="chevron" :class="{ open: opened[c.id] && !summaryMode }">▸</span>
+                        <span class="badge" :class="'badge-' + c.status">{{ c.status }}</span>
+                        <div class="case-info">
+                            <div class="case-title" :title="c.name">{{ c.name }}</div>
+                            <div class="case-tags" v-if="c.tags && c.tags.length">
+                                <span class="tag-chip" v-for="t in c.tags" :key="t">{{ t }}</span>
                             </div>
-                            <span style="color: #909399; font-size: 13px;">⏱ {{ item.duration.toFixed(3) }}s</span>
                         </div>
-                    </template>
-                    
-                    <div style="padding: 10px 20px;">
-                        <div v-if="(item.status === 'fail' || item.status === 'abort') && item.stacktrace" style="margin-bottom: 20px;">
-                            <el-alert title="异常堆栈信息" type="error" :closable="false" show-icon></el-alert>
-                            <div class="stacktrace-box"><pre>{{ item.stacktrace }}</pre></div>
+                        <span class="case-time">{{ c.beginTime }}</span>
+                        <span class="case-dur">{{ c.duration }}s</span>
+                    </div>
+                    <div class="case-body" v-show="opened[c.id] && !summaryMode">
+                        <div class="class-path">{{ c.className }}</div>
+
+                        <div class="alert-banner" :class="c.status === 'abort' ? 'alert-abort' : 'alert-fail'" v-if="c.status === 'fail' || c.status === 'abort'">
+                            <span>{{ c.status === 'fail' ? '✕' : '⚠' }}</span>
+                            <span>{{ c.error || c.status }}</span>
+                        </div>
+                        <div class="trace-box" v-if="c.stacktrace">{{ c.stacktrace }}</div>
+
+                        <div class="section sec-setup" v-if="c.setupDuration !== null">
+                            <div class="section-head"><span>{{ i18n('用例初始化', 'Case Setup') }}</span><span class="dur">{{ c.setupDuration }}s</span></div>
                         </div>
 
-                        <div v-for="(log, idx) in item.logs" :key="idx">
-                            <div v-if="log.type === 'step'" class="log-step">
-                                <b>Step {{ log.step_no }}:</b> {{ log.content || log.description }}
+                        <div class="section sec-steps" v-if="c.logs && c.logs.length">
+                            <div class="section-head"><span>{{ i18n('测试步骤', 'Test Steps') }}</span><span class="dur">{{ c.stepsDuration }}s</span></div>
+                            <div v-for="(log, idx) in c.logs" :key="idx">
+                                <div class="log-step" v-if="log.type === 'step'">
+                                    <span class="s-tag">{{ i18n('步骤', 'Step') }} #{{ log.step_no }}</span>
+                                    <span class="s-desc">{{ log.description || log.content }}</span>
+                                </div>
+                                <div class="log-cp" :class="log.status === 'pass' ? 'cp-pass' : 'cp-fail'" v-else-if="log.type === 'checkpoint'">
+                                    <span class="c-tag">{{ log.status === 'pass' ? '✓' : '✕' }} {{ i18n('检查点', 'CP') }}</span>
+                                    <span class="c-desc">{{ log.content }}</span>
+                                </div>
+                                <div class="log-info" v-else>{{ log.content }}</div>
                             </div>
-                            <div v-else-if="log.type === 'checkpoint'" :class="log.status === 'pass' ? 'log-cp-pass' : 'log-cp-fail'">
-                                <el-icon style="vertical-align: middle; margin-right: 5px;">
-                                    <component :is="log.status==='pass' ? 'Check' : 'Close'" />
-                                </el-icon>
-                                <b>CheckPoint:</b> {{ log.content }} 
-                            </div>
-                            <div v-else class="log-info">{{ log.content }}</div>
+                        </div>
+
+                        <div class="section sec-teardown" v-if="c.teardownDuration !== null">
+                            <div class="section-head"><span>{{ i18n('用例清除', 'Case Teardown') }}</span><span class="dur">{{ c.teardownDuration }}s</span></div>
                         </div>
                     </div>
-                </el-collapse-item>
-            </el-collapse>
-            
-            <el-empty v-if="filteredCases.length === 0" description="没有找到符合条件的测试用例"></el-empty>
+                </div>
+            </template>
+            <div class="empty" v-else>
+                <div class="e-icon">📭</div>
+                <div class="e-text">{{ i18n('没有匹配的用例', 'No matching cases') }}</div>
+            </div>
         </div>
     </div>
 
-    <script>
-        // 数据注入
-        const rawData = {{ REPORT_DATA }}; 
-        
-        const { createApp, computed, ref } = window.Vue;
+    <!-- Floating Nav -->
+    <div class="float-nav">
+        <button class="fab" @click="jumpError(-1)" :title="i18n('上一个错误','Prev Error')">∧</button>
+        <button class="fab" @click="jumpError(1)" :title="i18n('下一个错误','Next Error')">∨</button>
+        <button class="fab" @click="scrollTop()" :title="i18n('回到顶部','Top')">↑</button>
+    </div>
+</div>
 
-        const { Check, Close, Search } = window.ElementPlusIconsVue;
+<script>
+const raw = __REPORT_DATA__;
+const { createApp, ref, computed, reactive, nextTick } = Vue;
 
-        const app = createApp({
-            setup() {
-                const summary = ref(rawData.summary);
-                const cases = ref(rawData.cases);
-                const reportTitle = ref(rawData.title);
-                const generateTime = ref(rawData.generateTime);
-                const filterStatus = ref('all');
-                const searchText = ref('');
-                const activeNames = ref([]); 
+createApp({
+    setup() {
+        const data = ref(raw);
+        const s = computed(() => data.value.summary);
+        const filter = ref('all');
+        const search = ref('');
+        const opened = reactive({});
+        const summaryMode = ref(false);
+        const refs = reactive({});
+        const errIdx = ref(-1);
+        const allExp = ref(false);
 
-                const passRate = computed(() => {
-                    if (summary.value.case_count === 0) return 0;
-                    return ((summary.value.case_pass / summary.value.case_count) * 100).toFixed(2);
-                });
+        const isZh = computed(() => data.value.lang === 0);
+        const i18n = (zh, en) => isZh.value ? zh : en;
 
-                const filteredCases = computed(() => {
-                    return cases.value.filter(c => {
-                        if (filterStatus.value === 'fail' && c.status === 'pass') return false;
-                        if (searchText.value && !c.name.toLowerCase().includes(searchText.value.toLowerCase())) return false;
-                        return true;
-                    });
-                });
-
-                const getStatusType = (status) => {
-                    if (status === 'pass') return 'success';
-                    if (status === 'fail') return 'danger';
-                    if (status === 'abort') return 'warning';
-                    return 'info';
-                };
-
-                return {
-                    summary, cases, reportTitle, generateTime,
-                    filterStatus, searchText, activeNames,
-                    passRate, filteredCases, getStatusType, Search
-                }
-            }
+        const passRate = computed(() => {
+            if (!s.value.case_count) return '0';
+            return ((s.value.case_pass / s.value.case_count) * 100).toFixed(1).replace(/\.0$/, '');
         });
 
-        app.use(ElementPlus);
-        // 注册图标
-        for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
-            app.component(key, component)
-        }
-        app.mount('#app');
-    </script>
+        const filtered = computed(() => data.value.cases.filter(c => {
+            if (filter.value !== 'all' && c.status !== filter.value) return false;
+            if (search.value && !c.name.toLowerCase().includes(search.value.toLowerCase())) return false;
+            return true;
+        }));
+
+        const errorIds = computed(() => data.value.cases.filter(c => c.status !== 'pass').map(c => c.id));
+        const countBy = st => data.value.cases.filter(c => c.status === st).length;
+
+        const pct = v => { const t = s.value.case_count_to_run; if (!t) return '0'; const p = (v*100/t).toFixed(1); return p.endsWith('.0') ? p.slice(0,-2) : p; };
+        const barW = v => { const t = s.value.case_count_to_run; if (!t || !v) return '0%'; return Math.max(v*100/t, 1.5) + '%'; };
+
+        const toggle = id => { opened[id] = !opened[id]; };
+        const toggleAll = () => { allExp.value = !allExp.value; filtered.value.forEach(c => { opened[c.id] = allExp.value; }); };
+
+        const jumpError = dir => {
+            if (!errorIds.value.length) return;
+            errIdx.value = Math.max(0, Math.min(errIdx.value + dir, errorIds.value.length - 1));
+            const tid = errorIds.value[errIdx.value];
+            opened[tid] = true; summaryMode.value = false;
+            nextTick(() => { const el = refs[tid]; if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+        };
+        const scrollTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        return { data, s, filter, search, opened, summaryMode, refs, allExp, filtered, errorIds,
+                 passRate, countBy, pct, barW, toggle, toggleAll, jumpError, scrollTop, i18n };
+    }
+}).mount('#app');
+</script>
 </body>
 </html>
