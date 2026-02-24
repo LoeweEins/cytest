@@ -4,7 +4,6 @@
 .project
 .pydevproject
 .vscode/
-.cursorrules
 
 # Python cache / bytecode（缓存文件）
 __pycache__/
