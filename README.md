@@ -7,7 +7,9 @@ This is a automation test framework written by Zeen for the first time, where I 
 
 I'm also applying `fixture` mechanism to `cytest` to make sure it is so popular and evolves with the latest trend.
 
-## Installation From GitHub ｜ 从 GitHub 安装
+## Installation 
+
+### From GitHub ｜ 从 GitHub 安装
 
 ```sh
 git clone https://github.com/LoeweEins/cytest.git
