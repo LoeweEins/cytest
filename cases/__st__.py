@@ -17,7 +17,7 @@ def suite_teardown():
     pass
 
 
-# from hytest import signal
+# from cytest import signal
 
 # class MySignalHandler:
 #     TEST_RET_COL_NO = 6 # 测试结果在用例excel文件中的列数
@@ -87,5 +87,5 @@ def suite_teardown():
 #         for case in runner.case_list:
 #             print(f'{case.name} --- {case.execRet}')
 #
-# # 注册这个类的实例 为一个 hytest 信号处理对象
+# # 注册这个类的实例 为一个 cytest 信号处理对象
 # signal.register(MySignalHandler())

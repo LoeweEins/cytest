@@ -413,8 +413,7 @@ from .signal import signal
 
 class VueReportLogger:
     """
-    Vue 3 + Element Plus
-    signal 广播
+    Vue 3 
     """
 
     def __init__(self):
@@ -814,16 +813,6 @@ class HtmlLogger:
         with open(reportPath,'w',encoding='utf8') as f:
             f.write(htmlcontent)
 
-
-        if Settings.auto_open_report:
-            try:
-                my_os = platform.system().lower()
-                if my_os == 'windows':
-                    os.startfile(reportPath)
-                elif my_os == 'darwin': # macOS
-                    os.system(f'open {reportPath}')
-            except:
-                print(traceback.format_exc())
 
         #  with command line parameter report_url_prefix
         #  need to copy report from dir 'log' to 'reports'

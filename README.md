@@ -32,36 +32,36 @@ pip install cytest
 
 ```sh
 cd cytest          # enter the directory where the 'cases' folder is
-python -m cytest   
+python3 -m cytest   
 ```
 
 ### Options ｜ 命令行参数
 
 ```sh
 # language zh / en / de
-python -m cytest --lang en
+python3 -m cytest --lang en
 
 # directory
-python -m cytest cases/order
-python -m cytest cases/web_auto
+python3 -m cytest cases/order
+python3 -m cytest cases/web_auto
 
 # suite name
-python -m cytest --suite customer --suite order
+python3 -m cytest --suite customer --suite order
 
 # case name
-python -m cytest --test "*API-0001*"
+python3 -m cytest --test "*API-0001*"
 
 # tag
-python -m cytest --tag 接口测试
+python3 -m cytest --tag 接口测试
 
 # auto open report
-python -m cytest --auto_open_report yes
+python3 -m cytest --auto_open_report yes
 
 # report title
-python -m cytest --report_title "Sprint 12 Regression"
+python3 -m cytest --report_title "Sprint 12 Regression"
 
 # log level
-python -m cytest --loglevel 4
+python3 -m cytest --loglevel 4
 ```
 
 ### Output ｜ 输出
