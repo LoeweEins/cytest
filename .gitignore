@@ -5,7 +5,7 @@
 .pydevproject
 .vscode/
 .cursorrules
-
+.gitignore
 # Python cache / bytecode（缓存文件）
 __pycache__/
 *.pyc
