@@ -323,8 +323,8 @@ class Collector:
 
             #  模块里面的用例 根据选择条件过滤 ，如果没有通过，会从 meta['cases'] 里面去掉
             cls.caseFilter(filepath, meta, tag_include_expr, tag_exclude_expr,suitename_filters,casename_filters)
-
-            # 如果 用例都被过滤掉了
+            # 把meta['cases'] 替换成 passedCases
+            
             if not meta['cases']:
                 signal.info(f'\n** no cases in this file , skip it.')
                 return
@@ -507,7 +507,7 @@ for name in  exec_list：
             elif 类型是 case：
                 执行 case里面的用例：
                     先执行用例的 setup
-                    如果 setup 异常，后面的 teststeps 和 teardown都不执行
+                    如果 setup 异常，后面的 teststeps 和 teardown 都不执行
 
 
 ''' 

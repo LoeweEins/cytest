@@ -210,6 +210,8 @@ def run() :
         print(f' {args.case_dir}  {("不是目录，工作目录为：","is not a folder, workding dir is:")[l.n]} {os.getcwd()}')
         exit(2)  #  '2' stands for no test cases to run
 
+
+
     # 同时执行log里面的初始化日志模块，注册signal的代码
     from .utils.log import LogLevel
     from .utils.runner import Collector, Runner
@@ -266,6 +268,16 @@ def run() :
     if fileNum >= ReportFileNumber:
         reportFiles.sort()
         for rf in reportFiles[:fileNum - ReportFileNumber]:
+            try:
+                os.remove(rf)
+            except:...
+
+    # 删除旧 vue 报告，只保留最新 10 个
+    vue_report_files = glob.glob('./log/vue_report_*.html')
+    vue_file_num = len(vue_report_files)
+    if vue_file_num >= ReportFileNumber:
+        vue_report_files.sort()
+        for rf in vue_report_files[:vue_file_num - ReportFileNumber]:
             try:
                 os.remove(rf)
             except:...

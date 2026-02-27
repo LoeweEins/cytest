@@ -18,11 +18,14 @@ class Signal:
         for logger in self._clients:
             method = getattr(logger,self._curMethodName,None)
             if method:
-                method(*arg,**kargs)
+                try:
+                    method(*arg,**kargs)
+                except Exception as e:
+                    print(f"Error broadcasting signal {self._curMethodName}: {e}")
+                    continue
 
     # 兜底方法 __getattr__()
     # 动态获取方法名，返回广播函数
-    # 体现了 Python 的动态特性
     def __getattr__(self, attr): # 调用方法时，先获取方法名
         self._curMethodName = attr # 动态获取方法名，字符串
         return self._broadcast # 获取方法名后，返回广播函数
