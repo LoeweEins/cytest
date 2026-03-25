@@ -248,9 +248,12 @@ def CHECK_POINT(desc:str, condition, failStop=True, failLogScreenWebDriver = Non
         SELENIUM_LOG_SCREEN(failLogScreenWebDriver)
 
     # 记录下当前执行结果为失败
-    Runner.curRunningCase.execRet='fail'
-    Runner.curRunningCase.error=('检查点不通过','checkpoint failed')[l.n]
-    Runner.curRunningCase.stacktrace="\n"*3+('具体错误看测试步骤检查点','see checkpoint of case for details')[l.n]
+    # 注意：CHECK_POINT 可能在 suite_setup/suite_teardown 等“非用例上下文”被调用，
+    # 此时 Runner.curRunningCase 为 None，只做信号通知，不写用例对象。
+    if Runner.curRunningCase:
+        Runner.curRunningCase.execRet = 'fail'
+        Runner.curRunningCase.error = ('检查点不通过', 'checkpoint failed')[l.n]
+        Runner.curRunningCase.stacktrace = "\n" * 3 + ('具体错误看测试步骤检查点', 'see checkpoint of case for details')[l.n]
     # 如果失败停止，中止此测试用例
     if failStop:
         raise CheckPointFail()

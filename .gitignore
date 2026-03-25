@@ -25,6 +25,9 @@ cytest.egg-info/
 log/
 logs/
 
+# Local secrets (never commit)
+lib/local_secrets.py
+
 #
 # Backup / temp files（临时文件）
 *.bak
