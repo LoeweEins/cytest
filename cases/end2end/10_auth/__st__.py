@@ -22,6 +22,17 @@ def suite_setup():
     - SALEOR_GRAPHQL_URL: https://<your-saleor-domain>/graphql/
     - SALEOR_TEST_EMAIL / SALEOR_TEST_PASSWORD: （可选）用于 tokenCreate
     """
+    # URL 优先级：
+    # 1) 环境变量 SALEOR_GRAPHQL_URL
+    # 2) 若未设置且你直接执行本套件（未经过 end2end/__st__.py），则回退到本地私有配置 lib/local_secrets.py
+    # 3) 最后再走 get_saleor_graphql_url 的 default
+    if not getattr(GSTORE, "saleor_graphql_url", ""):
+        try:
+            from lib.local_secrets import SALEOR_GRAPHQL_URL as _URL  # type: ignore
+        except Exception:
+            _URL = ""
+        GSTORE.saleor_graphql_url = str(_URL or "").strip()
+
     GSTORE.saleor_graphql_url = get_saleor_graphql_url(GSTORE.saleor_graphql_url or "")
     GSTORE.saleor_test_email = os.getenv("SALEOR_TEST_EMAIL", "").strip()
     GSTORE.saleor_test_password = os.getenv("SALEOR_TEST_PASSWORD", "").strip()
@@ -39,6 +50,13 @@ def suite_setup():
     GSTORE.http_timeout_s = int(os.getenv("E2E_HTTP_TIMEOUT_S", str(_default_timeout)))
 
     INFO(f"[auth] saleor_graphql_url={GSTORE.saleor_graphql_url or '<EMPTY>'}")
+
+    # URL 基本校验：避免 zsh 引号未闭合导致把后续命令拼进 URL（含换行符）
+    if GSTORE.saleor_graphql_url and any(ch.isspace() for ch in GSTORE.saleor_graphql_url):
+        raise RuntimeError(
+            "SALEOR_GRAPHQL_URL 包含空白/换行符，通常是 export 命令引号未闭合导致的。"
+            "请确保示例：export SALEOR_GRAPHQL_URL=\"http://localhost:8000/graphql/\""
+        )
 
     # 没配置 URL：后续用例会失败，但这里先给出明确提示
     CHECK_POINT("必须配置 SALEOR_GRAPHQL_URL（指向可 POST 的 /graphql/ endpoint）", bool(GSTORE.saleor_graphql_url), failStop=False)
