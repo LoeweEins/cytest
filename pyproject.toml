@@ -39,6 +39,12 @@ dependencies = [
     "executing",
 ]
 
+[project.optional-dependencies]
+pytest-allure = [
+    "pytest>=7.0",
+    "allure-pytest>=2.13.0",
+]
+
 [project.urls]
 Homepage = "https://github.com/LoeweEins/cytest" # 还不确定
 Download = "https://pypi.python.org/pypi/cytest" # 还不确定
@@ -54,3 +60,8 @@ include = ["cytest*"]
 # 通配打包所有非 python 文件的静态资源
 [tool.setuptools.package-data]
 "*" = ["*.*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests_pytest"]
+addopts = "-ra"

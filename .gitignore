@@ -49,6 +49,11 @@ venv/
 .coverage
 coverage.xml
 htmlcov/
+.pytest_cache/
+
+# pytest + Allure（本地生成物）
+tests_pytest/allure-results/
+tests_pytest/allure-report/
 
 
 # IDE garbage

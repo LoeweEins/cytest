@@ -1,0 +1,86 @@
+================================================================================
+end2end 自动化用例总表（与代码同步说明）
+================================================================================
+
+一、文档位置与格式
+--------------------------------------------------------------------------------
+1. Excel 可直接打开：同目录下 END2END_TEST_CASES.csv（UTF-8 BOM，中文列名）。
+2. 本文件为纯文本总览，便于 diff 与快速检索。
+
+二、被测对象与运行方式
+--------------------------------------------------------------------------------
+- 默认对接 Saleor GraphQL（远程 demo 或自建），详见 ENV_SETUP.md。
+- 单套件示例：
+    python3 -m cytest cases/end2end/10_auth
+    python3 -m cytest cases/end2end/60_web_ui
+- UI 套件依赖：selenium、本机 Chrome、匹配版本的 chromedriver（可用环境变量
+  CHROMEDRIVER_PATH / CHROME_HEADLESS 等，见 lib/web_ui.py 与 60_web_ui/__st__.py）。
+
+三、用例清单（26 条）
+--------------------------------------------------------------------------------
+
+【10_auth — auth_cases.py】
+  cAUTH0001  AUTH-0001-匿名查询 Shop 基本信息
+             标签: API,冒烟 | 验证匿名 shop 查询与 shop.name
+  cAUTH0002  AUTH-0002-tokenCreate
+             标签: API,回归 | 需测试账号；生成 JWT
+  cAUTH0003  AUTH-0003-tokenVerify
+             标签: API,回归 | 需 access token
+  cAUTH0004  AUTH-0004-tokenRefresh
+             标签: API,回归,高风险 | 需 refresh；刷新后 verify
+  cAUTH0005  AUTH-0005-me（Bearer）
+             标签: API,回归 | 需 access token
+
+【20_catalog — catalog_cases.py】
+  cCATALOG0001  CATALOG-0001-匿名 Shop 可用性
+  cCATALOG0002  CATALOG-0002-categories(level=0)
+  cCATALOG0003  CATALOG-0003-collections(first=N)，需 channel
+  cCATALOG0004  CATALOG-0004-products(channel)，需 channel
+
+【21_search — search_cases.py】
+  cSEARCH0001  SEARCH-0001-products(filter.search)
+  cSEARCH0002  SEARCH-0002-products 列表字段契约
+
+【22_product — product_cases.py】
+  cPRODUCT0001  PRODUCT-0001-product(id, channel) 详情
+  cPRODUCT0002  PRODUCT-0002-products 列表
+
+【30_checkout — checkout_cases.py】
+  cCHECKOUT0001  CHECKOUT-0001-checkoutCreate（匿名+email+lines）
+  cCHECKOUT0002  CHECKOUT-0002-checkout 按 token 查询
+
+【31_pricing — pricing_cases.py】
+  cPRICING0001  PRICING-0001-checkout subtotal/total 非负数值
+
+【32_inventory — inventory_cases.py】
+  cINVENTORY0001  INVENTORY-0001-productVariants 库存字段
+
+【40_orders — order_cases.py】
+  cORDER0001  ORDER-0001-匿名 orders 权限拒绝
+  cORDER0002  ORDER-0002-staff orders 列表契约
+
+【50_payments — payment_cases.py】
+  cPAY0001  PAY-0001-匿名 payments 权限拒绝
+  cPAY0002  PAY-0002-staff payments 列表契约
+
+【60_web_ui — ui_cases.py】
+  cUI0001  UI-0001-打开 Dashboard 登录页（Selenium）
+  cUI0002  UI-0002-登录（需 local_secrets 账号密码）
+
+【90_admin — admin_cases.py】
+  cADMIN0001  ADMIN-0001-me 为 staff
+  cADMIN0002  ADMIN-0002-channels 列表
+
+【99_sandbox — sandbox_cases.py】
+  cSANDBOX0001  SANDBOX-0001-框架示例用例
+
+四、维护说明
+--------------------------------------------------------------------------------
+- 新增/重命名用例后，请同步更新 END2END_TEST_CASES.csv 与本 TXT（或运行仓库内
+  脚本重新生成 CSV，若后续已提供生成脚本则以脚本为准）。
+- 01_smoke / 02_contract / 03_shared 当前仅有套件 __st__.py，无 *_cases.py，
+  故未列入上表。
+
+================================================================================
+文档结束
+================================================================================

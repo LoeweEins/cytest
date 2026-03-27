@@ -1,0 +1,27 @@
+﻿序号,业务域,套件目录,源文件,类名,用例名称,标签,类型,前置条件摘要,主要步骤与验证点,阻塞/失败说明
+1,鉴权 Auth,10_auth,auth_cases.py,cAUTH0001,AUTH-0001-匿名查询 Shop 基本信息,"API,冒烟",GraphQL API,SALEOR_GRAPHQL_URL 可 POST；套件探测 API 可用,匿名 query shop{name}；errors 为空；shop.name 非空,未配 URL 或 endpoint 不可 POST → BLOCKED
+2,鉴权 Auth,10_auth,auth_cases.py,cAUTH0002,AUTH-0002-tokenCreate（账号密码登录，生成 JWT）,"API,回归",GraphQL API,同上 + SALEOR_TEST_EMAIL/PASSWORD 或 local_secrets,tokenCreate 成功；返回 access/refresh token 结构校验,未配账号密码 → BLOCKED
+3,鉴权 Auth,10_auth,auth_cases.py,cAUTH0003,AUTH-0003-tokenVerify（验证 token 有效性）,"API,回归",GraphQL API,套件已拿到 access token（登录成功）,tokenVerify；isValid 等与文档一致,无 token → BLOCKED
+4,鉴权 Auth,10_auth,auth_cases.py,cAUTH0004,AUTH-0004-tokenRefresh（刷新 access token）,"API,回归,高风险",GraphQL API,refresh token 可用,tokenRefresh 后对 new token 做 tokenVerify 校验有效,无 refresh → BLOCKED
+5,鉴权 Auth,10_auth,auth_cases.py,cAUTH0005,AUTH-0005-me 查询（验证 Bearer）,"API,回归",GraphQL API,有效 access token,me 查询；用户字段与鉴权一致,无 token → BLOCKED
+6,目录 Catalog,20_catalog,catalog_cases.py,cCATALOG0001,CATALOG-0001-匿名查询 Shop（基础可用性）,"API,冒烟",GraphQL API,GraphQL 可达；可选 staff 预登录,shop 或等价匿名查询；基础字段,URL/POST 不可用 → BLOCKED
+7,目录 Catalog,20_catalog,catalog_cases.py,cCATALOG0002,CATALOG-0002-查询一级类目 categories(level=0),"API,回归",GraphQL API,同上,categories 列表结构；level=0,见代码内 GraphQL 错误处理
+8,目录 Catalog,20_catalog,catalog_cases.py,cCATALOG0003,CATALOG-0003-查询集合 collections(first=N),"API,回归",GraphQL API,channel slug（环境变量或 staff 查 channels）,collections 连接结构,无 channel 且无 staff → BLOCKED
+9,目录 Catalog,20_catalog,catalog_cases.py,cCATALOG0004,CATALOG-0004-channel 下 products(first=N),"API,回归,高风险",GraphQL API,channel slug,products.edges；含 variants 字段契约,同上
+10,搜索 Search,21_search,search_cases.py,cSEARCH0001,SEARCH-0001-products(filter.search=QUERY),"API,回归",GraphQL API,channel；GraphQL 可达,按关键字搜索；结果结构,无 channel/token 等 → BLOCKED（见 __st__）
+11,搜索 Search,21_search,search_cases.py,cSEARCH0002,SEARCH-0002-列表排序/字段存在,"API,冒烟",GraphQL API,同上,products 列表 edges.node 字段契约,同上
+12,商品 Product,22_product,product_cases.py,cPRODUCT0001,"PRODUCT-0001-product(id, channel) 详情","API,回归",GraphQL API,channel；从列表取 product id,单商品详情字段,无商品 id → BLOCKED
+13,商品 Product,22_product,product_cases.py,cPRODUCT0002,PRODUCT-0002-products 列表字段契约,"API,冒烟",GraphQL API,channel,edges.node id/name/slug,同上
+14,结账 Checkout,30_checkout,checkout_cases.py,cCHECKOUT0001,CHECKOUT-0001-checkoutCreate,"API,冒烟,高风险",GraphQL API,channel slug；环境有可售 variant,匿名 checkoutCreate(email+lines)；id/token/lines,无 variant/channel → BLOCKED
+15,结账 Checkout,30_checkout,checkout_cases.py,cCHECKOUT0002,CHECKOUT-0002-checkout 按 token 查询,"API,回归",GraphQL API,0001 或 GSTORE 中已有 checkout_token,checkout 查询字段契约,无 token → BLOCKED
+16,定价 Pricing,31_pricing,pricing_cases.py,cPRICING0001,PRICING-0001-checkout 价格 subtotal/total,"API,回归",GraphQL API,channel + variant；创建 checkout,subtotalPrice/totalPrice gross.amount 非负数值,同 checkout 阻塞条件
+17,库存 Inventory,32_inventory,inventory_cases.py,cINVENTORY0001,INVENTORY-0001-productVariants 库存字段,"API,回归",GraphQL API,channel；staff 或匿名按查询设计,trackInventory bool；quantityAvailable int>=0,GraphQL/权限失败见用例
+18,订单 Orders,40_orders,order_cases.py,cORDER0001,ORDER-0001-匿名 orders 应拒绝,"API,回归,安全",GraphQL API,GraphQL 可达,匿名查询 orders 返回 errors（权限）,若意外成功则断言失败
+19,订单 Orders,40_orders,order_cases.py,cORDER0002,ORDER-0002-staff orders 列表契约,"API,冒烟",GraphQL API,staff token（套件 tokenCreate）,orders totalCount/edges 结构,无 staff → BLOCKED
+20,支付 Payments,50_payments,payment_cases.py,cPAY0001,PAY-0001-匿名 payments 应拒绝,"API,回归",GraphQL API,GraphQL 可达,匿名 payments 查询 errors 非空,契约校验
+21,支付 Payments,50_payments,payment_cases.py,cPAY0002,PAY-0002-staff payments 列表契约,"API,冒烟",GraphQL API,staff token,payments totalCount/edges,无 staff → BLOCKED
+22,Web UI,60_web_ui,ui_cases.py,cUI0001,UI-0001-打开 Dashboard 登录页,"UI,冒烟",Selenium+Chrome,suite_setup 已创建 ChromeDriver；WEB_BASE_URL,driver.get(base)；title 含 Saleor/Dashboard 等宽松断言,driver 启动失败 → 套件 BLOCKED
+23,Web UI,60_web_ui,ui_cases.py,cUI0002,UI-0002-登录（配置账号密码）,"UI,回归",Selenium+Chrome,同上 + lib/local_secrets 邮箱密码,填写 email/password；submit；URL 离开 login,未配密码 → BLOCKED；定位失败截图入报告
+24,后台 Admin,90_admin,admin_cases.py,cADMIN0001,ADMIN-0001-me 必须为 staff,"API,冒烟",GraphQL API,staff token,me.isStaff == True,非 staff → 失败
+25,后台 Admin,90_admin,admin_cases.py,cADMIN0002,ADMIN-0002-channels 列表,"API,回归",GraphQL API,staff token,channels 列表结构,权限/GraphQL 错误 → 失败或 BLOCKED
+26,沙箱 Sandbox,99_sandbox,sandbox_cases.py,cSANDBOX0001,SANDBOX-0001-框架示例,now,框架,无特殊要求,INFO/CHECK_POINT 示例,用于临时试验
